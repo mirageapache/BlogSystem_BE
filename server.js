@@ -1,10 +1,16 @@
 const express = require("express");
-const port = process.env.PORT || 3000;
 const mongoose = require("mongoose");
+const cors = require('cors')
+const bodyParser = require('body-parser')
 if(process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
+const port = process.env.PORT || 3000;
+const routes = require('./routes');
+
 const app = express();
+app.use(cors());
+app.use(bodyParser.json())
 
 // 資料庫連線設定
 mongoose.set("strictQuery", false);
@@ -19,11 +25,10 @@ db.on('error', (err) => {
   console.log(err)
 });
 
-// 路由
-app.get("/", (req, res) => {
-  res.send("express server");
-});
+// 路由設定
+app.use(routes);
 
+// 伺服器監聽
 app.listen(port, () => {
   console.log(`Express is running on http://localhost:${port}`);
 });
