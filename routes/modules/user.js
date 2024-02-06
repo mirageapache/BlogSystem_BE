@@ -27,9 +27,9 @@ router.get('/:id', async (req, res) => {
 
 /** 新增使用者 */
 router.post('/create', async (req, res) => {
-  validateUserData(req.body);
-  const { account, password, name, email, avatar, userRole, status } = req.body;
   try {
+    validateUserData(req.body);
+    const { account, password, name, email, avatar, userRole, status } = req.body;
     const newUser = await User.create({
       account,
       password,
@@ -48,6 +48,7 @@ router.post('/create', async (req, res) => {
 /** 更新使用者 */
 router.patch('/:id', async (req, res) => {
   try {
+    validateUserData(req.body);
     const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, { new: true }).lean();
     res.json(updatedUser);
   } catch (error) {
@@ -67,19 +68,15 @@ router.delete('/:id', async (req, res) => {
 
 /** 資料驗證 */
 const validateUserData = (data) => {
-  const { account, password, name, email, avatar, userRole, status } = data;
-  if (!account || account.trim().length === 0) {
-      throw new Error('Account is required');
-  }
-  if (!password || password.trim().length === 0) {
-      throw new Error('Password is required');
-  }
-  if (!name || name.trim().length === 0) {
-      throw new Error('Name is required');
-  }
-  if (!email || email.trim().length === 0) {
-      throw new Error('Email is required');
-  }
+  const { account, password, name, email } = data;
+  if (!account || account.trim().length === 0) throw new Error('Account is required');
+
+  if (!password || password.trim().length === 0) throw new Error('Password is required');
+
+  if (!name || name.trim().length === 0) throw new Error('Name is required');
+
+  if (!email || email.trim().length === 0) throw new Error('Email is required');
+
   return true;
 };
 

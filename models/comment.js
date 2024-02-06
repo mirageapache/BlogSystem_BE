@@ -10,10 +10,16 @@ export const CommentSchema = new Schema({
     ref: UserSchema,
     required: true,
   },
+  /** 回覆給 */
+  replyTo:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: UserSchema,
+  },
   /** 留言內容 */
   content:{
     type: String,
     required: true,
+    maxlength: 500,
   },
   /** 留言日期 */
   createdAt:{
