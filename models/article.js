@@ -1,71 +1,59 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const { v4:uuidv4 } = require('uuid');
-const User = require('user');
+const User = require('./user');
+const CommentSchema = require('./comment');
 
-/** 文章留言 Comment Schema */
-const CommentSchema = new Schema({
-  /** 留言使用者 */
-  author:{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: User,
-    required: true,
-  },
-  /** 留言內容 */
-  content:{
-    type: String,
-    required: true,
-  },
-  /** 留言日期 */
-  createdAt:{
-    type: Date,
-    default: Date.now,
-  }
-});
 
 /** 文章 Article Schema */
-const ArticleSchema = new Schema({
-  /** 文章id[*] */
+export const ArticleSchema = new Schema({
+  /** 文章id */
   _id:{
     type: String,
     default: uuidv4,
   },
-  /** 文章作者 */
+  /** 作者 */
   author:{
     type: mongoose.Schema.Types.ObjectId,
     ref: User,
     required: true,
   },
-  /** 文章標題 */
+  /** 標題 */
   title:{
-    Type: String,
+    type: String,
     requried: true,
   },
-  /** 文章內容 */
+  /** 內容 */
   content:{
-    Type: String,
+    type: String,
     required: true,
+  },
+  /** 狀態 
+   * [0-未發佈(未儲存) / 1-已儲存(草稿) / 2-發佈(公開) / 3-發佈(限閱) / 4-下架]
+   * 註：公開-所有使用者均可閱讀；限閱-進階使用者可完整閱讀，一般使用者僅可閱讀部分內容
+   */
+  status:{
+    type: Number,
+    default: 0,
+  },
+  /** 主題類型 */
+  subject:{
+    type: String,
+  },
+  /** 分類標籤 */
+  tags:{
+    type: [String],
   },
   /** 建立日期時間 */
   createdAt:{
-    Type: Date,
+    type: Date,
     default: Date.now,
   },
-  /** 讀者喜歡數 */
-  likeAmount:{
-    Type: Number,
-    default: 0,
-  },
   /** 喜歡的讀者id */
-  likedByUsers: [User],
-  /** 留言數 */
-  commentAmount:{
-    Type: Number,
-    default: 0,
+  likedByUsers: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: User,
   },
   /** 留言串 */
   comments: [CommentSchema],
-
 });
-
-module.exports = mongoose.model('Article', ArticleSchema);
