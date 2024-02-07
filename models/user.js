@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { v4:uuidv4 } = require('uuid');
 const Schema = mongoose.Schema;
 
-/** 文章留言 Comment Schema */
+/** 使用者 User Schema */
 export const UserSchema = new Schema({
   /** 使用者id */
   _id:{
