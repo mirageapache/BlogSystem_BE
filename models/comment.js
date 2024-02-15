@@ -1,29 +1,31 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const UserSchema = require('./user');
+const UserSchema = require("./user");
 
 /** 文章留言 Comment Schema */
-export const CommentSchema = new Schema({
+const CommentSchema = new Schema({
   /** 留言使用者 */
-  author:{
+  author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: UserSchema,
     required: true,
   },
   /** 回覆給 */
-  replyTo:{
+  replyTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: UserSchema,
   },
   /** 留言內容 */
-  content:{
+  content: {
     type: String,
     required: true,
     maxlength: 500,
   },
   /** 留言日期 */
-  createdAt:{
+  createdAt: {
     type: Date,
     default: Date.now,
-  }
+  },
 });
+
+module.exports = mongoose.model("comment", CommentSchema);

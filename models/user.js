@@ -1,14 +1,9 @@
 const mongoose = require('mongoose');
-const { v4:uuidv4 } = require('uuid');
+// const { v4:uuidv4 } = require('uuid');
 const Schema = mongoose.Schema;
 
 /** 使用者 User Schema */
-export const UserSchema = new Schema({
-  /** 使用者id */
-  _id:{
-    type: String,
-    default: uuidv4,
-  },
+const UserSchema = new Schema({
   /** 帳號 */
   account:{
     type: String,
@@ -50,3 +45,5 @@ export const UserSchema = new Schema({
     default: 0
   },
 });
+
+module.exports = mongoose.model("user", UserSchema);

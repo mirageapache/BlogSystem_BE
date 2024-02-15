@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 const UserSchema = require('./user');
 
 /** 系統通知訊息 System Message Schema */
-export const SysMessageSchema = new Schema({
+const SysMessageSchema = new Schema({
   /** 發送人 */
   sender:{
     type: mongoose.Schema.Types.ObjectId,
@@ -41,3 +41,5 @@ export const SysMessageSchema = new Schema({
     default: false,
   }
 });
+
+module.exports = mongoose.model("sysMessage", SysMessageSchema);

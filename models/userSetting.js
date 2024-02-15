@@ -1,37 +1,39 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 /** 使用者設定 User Setting Schema */
-export const UserSettingSchema = new Schema({
+const UserSettingSchema = new Schema({
   /** 使用者id */
-  user:{
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: User,
   },
   /** 語言 */
-  language:{
+  language: {
     type: String,
   },
   /** 深色模式 */
-  theme:{
+  theme: {
     type: Number,
     default: 0,
   },
-  /** 
+  /**
    * 標籤 - 使用者自訂義的文章分類標籤
    */
-  tags:{
+  tags: {
     type: [String],
     defaulte: [],
   },
   /** email通知推播 */
-  emailPrompt:{
+  emailPrompt: {
     type: Boolean,
     default: true,
   },
   /** 手機通知推播(app) */
-  MobilePrompt:{
+  MobilePrompt: {
     type: Boolean,
     default: true,
   },
 });
+
+module.exports = mongoose.model("userSetting", UserSettingSchema);

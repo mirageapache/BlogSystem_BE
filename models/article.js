@@ -1,51 +1,45 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const { v4:uuidv4 } = require('uuid');
-const User = require('./user');
-const CommentSchema = require('./comment');
-
+// const { v4: uuidv4 } = require("uuid");
+const User = require("./user");
+const Comment = require("./comment");
 
 /** 文章 Article Schema */
-export const ArticleSchema = new Schema({
-  /** 文章id */
-  _id:{
-    type: String,
-    default: uuidv4,
-  },
+const ArticleSchema = new Schema({
   /** 作者 */
-  author:{
+  author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: User,
     required: true,
   },
   /** 標題 */
-  title:{
+  title: {
     type: String,
     requried: true,
   },
   /** 內容 */
-  content:{
+  content: {
     type: String,
     required: true,
   },
-  /** 狀態 
+  /** 狀態
    * [0-未發佈(未儲存) / 1-已儲存(草稿) / 2-發佈(公開) / 3-發佈(限閱) / 4-下架]
    * 註：公開-所有使用者均可閱讀；限閱-進階使用者可完整閱讀，一般使用者僅可閱讀部分內容
    */
-  status:{
+  status: {
     type: Number,
     default: 0,
   },
   /** 主題類型 */
-  subject:{
+  subject: {
     type: String,
   },
   /** 分類標籤 */
-  tags:{
+  tags: {
     type: [String],
   },
   /** 建立日期時間 */
-  createdAt:{
+  createdAt: {
     type: Date,
     default: Date.now,
   },
@@ -55,5 +49,10 @@ export const ArticleSchema = new Schema({
     ref: User,
   },
   /** 留言串 */
-  comments: [CommentSchema],
+  comments: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: Comment,
+  },
 });
+
+module.exports = mongoose.model("articles", ArticleSchema);
