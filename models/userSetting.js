@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { v4:uuidv4 } = require('uuid');
 const Schema = mongoose.Schema;
 
 /** 使用者設定 User Setting Schema */
@@ -18,9 +17,21 @@ export const UserSettingSchema = new Schema({
     type: Number,
     default: 0,
   },
-  /** 標籤 */
+  /** 
+   * 標籤 - 使用者自訂義的文章分類標籤
+   */
   tags:{
     type: [String],
     defaulte: [],
-  }
+  },
+  /** email通知推播 */
+  emailPrompt:{
+    type: Boolean,
+    default: true,
+  },
+  /** 手機通知推播(app) */
+  MobilePrompt:{
+    type: Boolean,
+    default: true,
+  },
 });

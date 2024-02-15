@@ -22,9 +22,13 @@ export const SysMessageSchema = new Schema({
     required: true,
   },
   /** 訊息狀態 [0-未發送(未儲存) / 1-已儲存(草稿) / 2-已發送 / 3-刪除(在垃圾桶)] */
-  messageStatus:{
+  status:{
     type: Number,
     default: 0,
+  },
+  /** 訊息類別 [0-重要 / 1-一般 / 2-使用者 / 3-備用] */
+  category:{
+    type: Number,
   },
   /** 發送日期 */
   createdAt:{
