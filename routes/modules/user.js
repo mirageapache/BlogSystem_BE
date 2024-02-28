@@ -27,7 +27,7 @@ router.get("/:id", async (req, res) => {
 });
 
 /** 新增使用者(註冊) */
-router.post("/create", async (req, res) => {
+router.post("/signup", async (req, res) => {
   signupValidation();
   try {
     const { account, password, name, email, avatar, userRole, status } =
