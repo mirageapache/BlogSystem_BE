@@ -10,7 +10,7 @@ const FollowShipSchema = new Schema({
   },
   /** 追蹤
    * 自己追蹤其他使用者
-   * state為訂閱狀態 [0-禁聲 / 1-一般 / 2-主動推播]
+   * state為訂閱狀態 state為訂閱狀態 [0-未追蹤 / 1-追蹤(不主動推播) / 2-主動推播]
    */
   following: {
     type: [
