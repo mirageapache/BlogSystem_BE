@@ -20,7 +20,6 @@ const validatePassword = [
     .notEmpty()
     .withMessage("Password is required")
     .trim()
-    .isLength({ max: 30 })
     .withMessage("Password must be at most 30 characters"),
 ];
 
