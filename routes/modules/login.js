@@ -24,7 +24,7 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
   console.log(password, confirmPassword);
 
   // 驗證密碼&確認密碼
-  if (!bcrypt.compareSync(password, confirmPassword)) {
+  if (!bcrypt.compare(password, confirmPassword)) {
     return res.status(401).json({ message: "密碼與確認密碼不相符！" });
   }
 
