@@ -16,12 +16,11 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
   // 資料驗證
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    return res.status(400).json({ message: errors.array() });
   }
 
   const param = get(req, "body", {});
   const { email, password, confirmPassword } = param;
-  console.log(password, confirmPassword);
 
   // 驗證密碼&確認密碼
   if (!bcrypt.compare(password, confirmPassword)) {
@@ -32,7 +31,7 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
     // 驗證email是否重複
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ errors: "duplicate email" });
+      return res.status(400).json({ message: "該Email已存在！" });
     }
 
     const newUser = await User.create({
@@ -46,7 +45,7 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
     });
     res.status(200).json(newUser);
   } catch (error) {
-    res.status(400).json({ errors: error.message });
+    res.status(400).json({ message: error.message });
   }
 });
 
@@ -54,7 +53,7 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
 router.post("/signin", async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    return res.status(400).json({ message: errors.array() });
   }
 
   const param = get(req, "body", {});
@@ -63,12 +62,12 @@ router.post("/signin", async (req, res) => {
     // 確認使用者是否註冊
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User does not exist" });
+      return res.status(404).json({ message: "Email尚未註冊！" });
     }
 
     // 比對密碼
     if (!bcrypt.compareSync(password, user.password)) {
-      return res.status(401).json({ message: "Incorrect password" });
+      return res.status(401).json({ message: "密碼錯誤！" });
     }
 
     // 產生 JWT token
@@ -78,7 +77,7 @@ router.post("/signin", async (req, res) => {
 
     res.status(200).json({ message: "signin success", user, token });
   } catch (error) {
-    res.status(400).json({ errors: error.message });
+    res.status(400).json({ message: error.message });
   }
 });
 
