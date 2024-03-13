@@ -65,17 +65,18 @@ router.post("/signin", async (req, res) => {
     }
 
     // 比對密碼
-    if (!bcrypt.compareSync(password, user.password)) {
+    if (!bcrypt.compare(password, user.password)) {
       res.status(401).json({ message: "密碼錯誤！" });
     }
 
     // 產生 JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-
-    res.status(200).json({ message: "signin success", user, token });
+    console.log(res);
+    res.status(200).json({ message: "signin success", authToken });
   } catch (error) {
+    console.log(error);
     res.status(400).json({ message: error.message });
   }
 });
