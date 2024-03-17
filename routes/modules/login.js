@@ -23,7 +23,9 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
   const { email, password, confirmPassword } = param;
 
   // 驗證密碼&確認密碼
-  bcrypt.compare(password, confirmPassword, (result) => {
+  bcrypt.compareSync(confirmPassword, password, (result) => {
+    console.log(confirmPassword, password);
+    console.log(result);
     if (!result) {
       return res.status(401).json({ message: "密碼與確認密碼不相符！" });
     }
@@ -68,7 +70,7 @@ router.post("/signin", async (req, res) => {
 
     // 比對密碼
     bcrypt
-      .compare(password, user.password)
+      .compareSync(password, user.password)
       .then((isMatch) => {
         console.log(password, user.password);
         if (!isMatch) {

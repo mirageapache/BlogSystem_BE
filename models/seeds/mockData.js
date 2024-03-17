@@ -25,7 +25,7 @@ async function initDatabase() {
       try {
         // 清除 user data
         await User.deleteMany({});
-        console.log("clear data success");
+        console.log("✅ clear user data success...");
         // 建立 user data
         for (let i = 0; i < userMockData.length; i++) {
           await User.create({
@@ -38,9 +38,10 @@ async function initDatabase() {
             status: 0,
           });
         }
-        console.log("✅user data initial success!");
+        console.log("✅ user data initial success...");
+        process.exit(); // 結束執行
       } catch (error) {
-        console.log("❌user initial failed! Error message:", error);
+        console.log("❌ user initial failed! Error message:", error);
       }
     });
   } catch (error) {
@@ -48,4 +49,4 @@ async function initDatabase() {
   }
 }
 
-initDatabase(); // 呼叫異步函式初始化資料庫
+initDatabase();
