@@ -14,7 +14,7 @@ app.use(bodyParser.json())
 
 // 資料庫連線設定
 mongoose.set("strictQuery", false);
-mongoose.connect(process.env.MONGODB_URI, {useNewUrlParser: true, useUnifiedTopology: true});
+mongoose.connect(process.env.MONGODB_URI);
 const db = mongoose.connection;
 
 db.once('once', () => {
