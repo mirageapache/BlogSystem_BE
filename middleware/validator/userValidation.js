@@ -1,7 +1,8 @@
+const mongoose = require("mongoose");
 const { body } = require("express-validator");
 const User = require("../../models/user");
 const { getRandomInt } = require("../mathUtils");
-const { isEmpty } = require("lodash");
+if (process.env.NODE_ENV !== "production") require("dotenv").config();
 
 /** email 驗證 */
 const validateEmail = [
@@ -25,15 +26,29 @@ const validatePassword = [
 
 /** 檢查 account 是否重複 */
 const checkAccountExist = async (account) => {
-  let newAccount = account;
-  do {
-    const existingAccount = await User.findOne({ newAccount });
-    if (existingAccount) {
-      newAccount = account;
-      newAccount += getRandomInt(11, 999);
+  mongoose.set("strictQuery", false);
+  mongoose.connect(process.env.MONGODB_URI);
+  const db = mongoose.connection;
+
+  db.once("open", async () => {
+    let newAccount = account;
+    console.log(newAccount);
+    let existingAccount;
+    try {
+      do {
+        console.log(newAccount);
+        existingAccount = await User.findOne({ newAccount });
+        if (existingAccount) {
+          newAccount = account;
+          newAccount += getRandomInt(11, 999);
+        }
+      } while (existingAccount);
+
+      return newAccount;
+    } catch (error) {
+      console.log(error);
     }
-  } while (existingAccount);
-  return newAccount;
+  });
 };
 
 /** name 驗證 */
@@ -48,7 +63,6 @@ const validateName = [
     .matches(/^[a-zA-Z0-9_.]+$/)
     .withMessage("Name can not contain symbols"),
 ];
-
 
 module.exports = {
   validateEmail,

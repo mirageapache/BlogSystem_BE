@@ -1,8 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../../models/user");
-const { signupValidation } = require("../../middleware/validator");
-const { authenticate } = require("../../middleware/validator/auth");
+const { authenticate } = require("../../middleware/auth");
 
 /** 取得所有使用者 */
 router.get("/", authenticate, async (req, res) => {
