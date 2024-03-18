@@ -6,8 +6,9 @@ const { get } = require("lodash");
 // --- functions ---
 const { validationResult } = require("express-validator");
 const {
-  validatePassword,
   validateEmail,
+  validatePassword,
+  checkAccountExist,
 } = require("../../middleware/validator/userValidation");
 const User = require("../../models/user");
 
@@ -21,26 +22,23 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
 
   const param = get(req, "body", {});
   const { email, password, confirmPassword } = param;
-
+  let account = checkAccountExist(email.split("@")[0]);
+  console.log(confirmPassword, password);
+  
   // 驗證密碼&確認密碼
-  bcrypt.compareSync(confirmPassword, password, (result) => {
-    console.log(confirmPassword, password);
-    console.log(result);
-    if (!result) {
-      return res.status(401).json({ message: "密碼與確認密碼不相符！" });
-    }
-  });
+  if (password !== confirmPassword) {
+    return res.status(401).json({ message: "密碼與確認密碼不相符！" });
+  }
 
   try {
     // 驗證email是否重複
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(401).json({ message: "該Email已存在！" });
-    }
+    if (existingUser) return res.status(401).json({ message: "該Email已存在！" });
 
     await User.create({
       email,
       password,
+      account: account,
       name: email.split("@")[0],
       avatar: "",
       userRole: 0,
@@ -69,28 +67,17 @@ router.post("/signin", async (req, res) => {
     }
 
     // 比對密碼
-    bcrypt
-      .compareSync(password, user.password)
-      .then((isMatch) => {
-        console.log(password, user.password);
-        if (!isMatch) {
-          return res.status(401).json({ message: "密碼錯誤！" });
-        } else {
-          // 產生 JWT token
-          const authToken = jwt.sign(
-            { userId: user._id },
-            process.env.JWT_SECRET,
-            {
-              expiresIn: "1h",
-            }
-          );
+    if (password !== user.password) {
+      return res.status(401).json({ message: "密碼錯誤！" });
+    }
 
-          return res.status(200).json({ message: "signin success", authToken });
-        }
-      })
-      .catch((error) => {
-        return console.error("Error comparing passwords:", error);
-      });
+    // 產生並回傳 JWT token
+    const authToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" },
+    );
+    return res.status(200).json({ message: "signin success", authToken });
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }

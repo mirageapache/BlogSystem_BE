@@ -1,9 +1,13 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+
+if (process.env.NODE_ENV !== "production") require("dotenv").config();
+// --- Models ---
 const User = require("../user");
-if (process.env.NODE_ENV !== "production") {
-  require("dotenv").config();
-}
+const Article = require("../article");
+
+// --- MockDatas ---
+const { userMockData } = require("userMockData");
+const { articleMockData } = require("articleMockData");
 
 async function initDatabase() {
   // DB connection
@@ -12,15 +16,7 @@ async function initDatabase() {
   const db = mongoose.connection;
 
   try {
-    const hashedPwd = await bcrypt.hash("abcd1234", bcrypt.genSaltSync(11)); // init加密密碼
-    const userMockData = [
-      { email: "test1@test.com", password: hashedPwd },
-      { email: "test2@test.com", password: hashedPwd },
-      { email: "test3@test.com", password: hashedPwd },
-    ];
-
     // const articleMockData = [{}];
-
     db.once("open", async () => {
       try {
         // 清除 user data
@@ -39,9 +35,29 @@ async function initDatabase() {
           });
         }
         console.log("✅ user data initial success...");
+        
+        // 清除 aritcle data
+        await Article.deleteMany({});
+        console.log("✅ clear article data success...");
+        // 建立 aritcle data
+        for (let i = 0; i < articleMockData.length; i++) {
+          await Article.create({
+            author: articleMockData[i].author,
+            title: articleMockData[i].title,
+            content: articleMockData[i].content,
+            status: 0,
+            subject: articleMockData[i].subject,
+            tags: [],
+            createdAt: new Date(),
+            likedByUsers: [],
+            comments: [],
+          });
+        }
+        console.log("✅ article data initial success...");
+  
         process.exit(); // 結束執行
       } catch (error) {
-        console.log("❌ user initial failed! Error message:", error);
+        console.log("❌ initial failed! Error message:", error);
       }
     });
   } catch (error) {

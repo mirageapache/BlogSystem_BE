@@ -1,16 +1,16 @@
 const { body } = require("express-validator");
+const User = require("../../models/user");
+const { getRandomInt } = require("../mathUtils");
+const { isEmpty } = require("lodash");
 
-/** account 驗證 */
-const validateAccount = [
-  body("account")
+/** email 驗證 */
+const validateEmail = [
+  body("email")
     .bail()
     .notEmpty()
-    .withMessage("Account is required")
-    .trim()
-    .isLength({ max: 30 })
-    .withMessage("Account must be at most 30 characters")
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage("Account can not contain symbols"),
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Please enter a valid email address"),
 ];
 
 /** password 驗證 */
@@ -22,6 +22,19 @@ const validatePassword = [
     .trim()
     .withMessage("Password must be at most 30 characters"),
 ];
+
+/** 檢查 account 是否重複 */
+const checkAccountExist = async (account) => {
+  let newAccount = account;
+  do {
+    const existingAccount = await User.findOne({ newAccount });
+    if (existingAccount) {
+      newAccount = account;
+      newAccount += getRandomInt(11, 999);
+    }
+  } while (existingAccount);
+  return newAccount;
+};
 
 /** name 驗證 */
 const validateName = [
@@ -36,19 +49,10 @@ const validateName = [
     .withMessage("Name can not contain symbols"),
 ];
 
-/** email 驗證 */
-const validateEmail = [
-  body("email")
-    .bail()
-    .notEmpty()
-    .withMessage("Email is required")
-    .isEmail()
-    .withMessage("Please enter a valid email address"),
-];
 
 module.exports = {
-  validateAccount,
-  validatePassword,
-  validateName,
   validateEmail,
+  validatePassword,
+  checkAccountExist,
+  validateName,
 };

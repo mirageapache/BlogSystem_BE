@@ -4,13 +4,18 @@ const Schema = mongoose.Schema;
 
 /** 使用者 User Schema */
 const UserSchema = new Schema({
-  /** 帳號(Email) */
+  /** Email */
   email: {
     type: String,
     required: true,
   },
   /** 密碼 */
   password: {
+    type: String,
+    required: true,
+  },
+  /** 帳號() */
+  account: {
     type: String,
     required: true,
   },

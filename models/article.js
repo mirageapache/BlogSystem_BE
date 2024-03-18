@@ -23,7 +23,7 @@ const ArticleSchema = new Schema({
     required: true,
   },
   /** 狀態
-   * [0-未發佈(未儲存) / 1-已儲存(草稿) / 2-發佈(公開) / 3-發佈(限閱) / 4-下架]
+   * [0-草稿(已儲存) / 1-發佈(公開) / 2-發佈(限閱) / 3-下架]
    * 註：公開-所有使用者均可閱讀；限閱-進階使用者可完整閱讀，一般使用者僅可閱讀部分內容
    */
   status: {
@@ -55,4 +55,4 @@ const ArticleSchema = new Schema({
   },
 });
 
-module.exports = mongoose.model("articles", ArticleSchema);
+module.exports = mongoose.model("Article", ArticleSchema);

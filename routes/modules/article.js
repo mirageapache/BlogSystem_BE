@@ -27,8 +27,19 @@ router.get('/:id', async (req, res) => {
 
 /** 新增文章 */
 router.post('/create', async (req, res) => {
+  const {author, title, content, subject, tags} = req.body;
   try {
-    const newArticle = await Article.create(req.body);
+    const newArticle = await Article.create({
+      author,
+      title,
+      content,
+      status: 0,
+      subject,
+      tags,
+      createdAt: new Date(),
+      likedByUsers: [],
+      comments: [],
+    });
     res.status(201).json(newArticle);
   } catch (error) {
     res.status(400).json({ message: error.message });
