@@ -23,7 +23,6 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
   const param = get(req, "body", {});
   const { email, password, confirmPassword } = param;
   let account = await checkAccountExist(email.split("@")[0]);
-  console.log(account);
   // 驗證密碼&確認密碼
   if (password !== confirmPassword) {
     return res.status(401).json({ message: "密碼與確認密碼不相符！" });
@@ -66,6 +65,9 @@ router.post("/signin", async (req, res) => {
       return res.status(404).json({ message: "Email尚未註冊！" });
     }
 
+    console.log(password,' = password')
+    console.log(user.password, ' = db-password')
+
     // 比對密碼
     if (password !== user.password) {
       return res.status(401).json({ message: "密碼錯誤！" });
@@ -75,7 +77,7 @@ router.post("/signin", async (req, res) => {
     const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    return res.status(200).json({ message: "signin success", authToken });
+    return res.status(200).json({ message: "signin success", authToken, userId: user._id });
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }

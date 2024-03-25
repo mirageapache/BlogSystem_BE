@@ -26,29 +26,21 @@ const validatePassword = [
 
 /** 檢查 account 是否重複 */
 const checkAccountExist = async (account) => {
-  mongoose.set("strictQuery", false);
-  mongoose.connect(process.env.MONGODB_URI);
-  const db = mongoose.connection;
+  let newAccount = account;
+  let existingAccount;
+  try {
+    do {
+      existingAccount = await User.findOne({ account: newAccount });
+      if (existingAccount) {
+        newAccount = account;
+        newAccount += getRandomInt(11, 999);
+      }
+    } while (existingAccount);
 
-  db.once("open", async () => {
-    let newAccount = account;
-    console.log(newAccount);
-    let existingAccount;
-    try {
-      do {
-        console.log(newAccount);
-        existingAccount = await User.findOne({ newAccount });
-        if (existingAccount) {
-          newAccount = account;
-          newAccount += getRandomInt(11, 999);
-        }
-      } while (existingAccount);
-
-      return newAccount;
-    } catch (error) {
-      console.log(error);
-    }
-  });
+    return newAccount;
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 /** name 驗證 */
