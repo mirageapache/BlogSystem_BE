@@ -7,22 +7,22 @@ const { authenticate } = require("../../middleware/auth");
 router.get("/", authenticate, async (req, res) => {
   try {
     const users = await User.find().lean();
-    res.json(users);
+    return res.json(users);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 });
 
 /** 取得特定使用者 */
 router.get("/:id", authenticate, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).lean();
+    const user = await User.findById(req.params.id).select("-password").lean(); // 排除 password 欄位
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json(user);
+    return res.json(user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 });
 
@@ -32,9 +32,9 @@ router.patch("/:id", authenticate, async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     }).lean();
-    res.json(updatedUser);
+    return res.json(updatedUser);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return res.status(400).json({ message: error.message });
   }
 });
 
@@ -42,9 +42,9 @@ router.patch("/:id", authenticate, async (req, res) => {
 router.delete("/:id", authenticate, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
-    res.json({ message: "User deleted" });
+    return res.json({ message: "User deleted" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 });
 

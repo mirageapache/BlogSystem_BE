@@ -7,13 +7,14 @@ const authenticate = (req, res, next) => {
   }
 
   // 驗證 token
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
     next();
-  });
+  } catch (error) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
 }
 
 module.exports = { authenticate };

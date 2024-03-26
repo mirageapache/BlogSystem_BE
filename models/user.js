@@ -29,6 +29,10 @@ const UserSchema = new Schema({
     type: String,
     default: "",
   },
+  /** 自介(biographical) */
+  bio: {
+    type: String,
+  },
   /** 使用者身份 [0-一般 / 1-進階 / 2-系統管理員] */
   userRole: {
     type: Number,

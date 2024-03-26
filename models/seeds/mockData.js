@@ -24,12 +24,14 @@ async function initDatabase() {
         console.log("✅ clear user data success...");
         // 建立 user data
         for (let i = 0; i < userMockData.length; i++) {
+          const username = userMockData[i].email.split("@")[0];
           const newUser = await User.create({
             email: userMockData[i].email,
             password: userMockData[i].password,
-            account: userMockData[i].email.split("@")[0],
-            name: userMockData[i].email.split("@")[0],
+            account: username,
+            name: username,
             avatar: "",
+            bio: `Hi, I'm ${username}`,
             userRole: 0,
             createdAt: new Date(),
             status: 0,
