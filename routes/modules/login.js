@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
+const { hashSync, genSaltSync } = require("bcryptjs");
 const { get } = require("lodash");
 // --- functions ---
 const { validationResult } = require("express-validator");
@@ -50,7 +51,7 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
 });
 
 /** 登入 */
-router.post("/signin", async (req, res) => {
+router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(401).json({ message: errors.array() });
@@ -63,9 +64,6 @@ router.post("/signin", async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "Email尚未註冊！" });
     }
-
-    console.log(password,' = password')
-    console.log(user.password, ' = db-password')
 
     // 比對密碼
     if (password !== user.password) {
@@ -80,6 +78,13 @@ router.post("/signin", async (req, res) => {
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }
+});
+
+/** 密碼加密 */
+router.get('/hashPwd', async (req, res) => {
+  const password = req.body.password;
+  const hashedPwd = hashSync(password, genSaltSync(11));
+  res.status(200).json({ hashedPwd });
 });
 
 module.exports = router;

@@ -8,23 +8,25 @@ if (process.env.NODE_ENV !== "production") require("dotenv").config();
 const validateEmail = [
   body("email")
     .bail()
+    .trim()
     .notEmpty()
-    .withMessage("Email is required")
+    .withMessage("Email欄位必填")
     .isEmail()
-    .withMessage("Please enter a valid email address"),
+    .withMessage("請輸入有效的Email"),
 ];
 
 /** password 驗證 */
 const validatePassword = [
   body("password")
     .bail()
-    .notEmpty()
-    .withMessage("Password is required")
     .trim()
-    .withMessage("Password must be at most 30 characters"),
+    .notEmpty()
+    .withMessage("密碼欄位必填")
 ];
 
-/** 檢查 account 是否重複 */
+/** account 檢查是否重複 
+*   在註冊時當account已存在將在原先的字串後面加上亂數(11-999)再寫入資料庫
+*/
 const checkAccountExist = async (account) => {
   let newAccount = account;
   let existingAccount;
@@ -47,11 +49,11 @@ const checkAccountExist = async (account) => {
 const validateName = [
   body("name")
     .bail()
-    .notEmpty()
-    .withMessage("Name is required")
     .trim()
+    .notEmpty()
+    .withMessage("暱稱欄位必填")
     .isLength({ max: 20 })
-    .withMessage("Name must be at most 20 characters")
+    .withMessage("暱稱最多20個字")
     .matches(/^[a-zA-Z0-9_.]+$/)
     .withMessage("Name can not contain symbols"),
 ];
