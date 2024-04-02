@@ -51,7 +51,7 @@ async function initDatabase() {
             content: articleMockData[i].content,
             status: 0,
             subject: articleMockData[i].subject,
-            tags: [],
+            tags: ['測試'],
             createdAt: new Date(),
             likedByUsers: [],
             comments: [],

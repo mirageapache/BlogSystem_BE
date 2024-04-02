@@ -10,7 +10,11 @@ const {
   validatePassword,
   checkAccountExist,
 } = require("../../middleware/validator/userValidation");
+// --- models ---
 const User = require("../../models/user");
+const FollowShip = require("../../models/followShip");
+const UserSetting = require("../../models/userSetting");
+
 
 /** 註冊 */
 router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
@@ -33,8 +37,8 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(401).json({ message: "該Email已存在！" });
-
-    await User.create({
+    // 建立User資料
+    const user = await User.create({
       email,
       password,
       account: account,
@@ -44,6 +48,22 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
       createdAt: new Date(),
       status: 0,
     });
+    // 初始化User追蹤資料
+    await FollowShip.create({
+      user: user._id,
+      following: [],
+      follower: [],
+    })
+    // 初始化User設定
+    await UserSetting.create({
+      user: user._id,
+      language: 'zh',
+      theme: 'light',
+      tags: [],
+      emailPrompt: true,
+      mobilePrompt: true,
+    });
+
     return res.status(200).json({ message: "success" });
   } catch (error) {
     return res.status(400).json({ message: error.message });
@@ -80,7 +100,7 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
   }
 });
 
-/** 密碼加密 */
+/** 密碼加密(測試用) */
 router.get('/hashPwd', async (req, res) => {
   const password = req.body.password;
   const hashedPwd = hashSync(password, genSaltSync(11));

@@ -30,10 +30,10 @@ const UserSettingSchema = new Schema({
     default: true,
   },
   /** 手機通知推播(app) */
-  MobilePrompt: {
+  mobilePrompt: {
     type: Boolean,
     default: true,
   },
 });
 
-module.exports = mongoose.model("userSetting", UserSettingSchema);
+module.exports = mongoose.model("UserSetting", UserSettingSchema);

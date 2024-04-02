@@ -8,11 +8,20 @@ const FollowShipSchema = new Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: User,
   },
-  /** 追蹤
+  /** 追蹤清單
    * 自己追蹤其他使用者
-   * state為訂閱狀態 state為訂閱狀態 [0-未追蹤 / 1-追蹤(不主動推播) / 2-主動推播]
+   * 
    */
   following: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: User,
+  },
+  /** 粉絲清單
+   * 其他使用者追蹤自己
+   * state為訂閱狀態 state為訂閱狀態 [0-追蹤(不主動推播) / 1-主動推播]
+   */
+  follower: {
+    
     type: [
       {
         userId: {
@@ -27,13 +36,6 @@ const FollowShipSchema = new Schema({
     ],
     ref: User,
   },
-  /** 粉絲
-   * 其他使用者追蹤自己
-   */
-  follower: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: User,
-  },
 });
 
-module.exports = mongoose.model("followShip", FollowShipSchema);
+module.exports = mongoose.model("FollowShip", FollowShipSchema);
