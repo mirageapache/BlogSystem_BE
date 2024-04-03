@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
-const { hashSync, genSaltSync } = require("bcryptjs");
+const { hashSync } = require("bcryptjs");
 const { get } = require("lodash");
 // --- functions ---
 const { validationResult } = require("express-validator");
@@ -103,7 +103,7 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
 /** 密碼加密(測試用) */
 router.get('/hashPwd', async (req, res) => {
   const password = req.body.password;
-  const hashedPwd = hashSync(password, genSaltSync(11));
+  const hashedPwd = hashSync(password, process.env.SALT_ROUNDS);
   res.status(200).json({ hashedPwd });
 });
 
