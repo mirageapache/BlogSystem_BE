@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
+const User = require("./user");
 
 /** 使用者設定 User Setting Schema */
 const UserSettingSchema = new Schema({
