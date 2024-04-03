@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
-const { hashSync } = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 const { get } = require("lodash");
+require("dotenv").config();
 // --- functions ---
 const { validationResult } = require("express-validator");
 const {
@@ -35,12 +36,13 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
   try {
     // 驗證email是否重複
     const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(401).json({ message: "該Email已存在！" });
+    if (existingUser) return res.status(401).json({ message: "該Email已存在！" });
+    const hashedPwd = bcrypt.hashSync(password, process.env.SALT_ROUNDS);
+
     // 建立User資料
     const user = await User.create({
       email,
-      password,
+      password: hashedPwd,
       account: account,
       name: email.split("@")[0],
       avatar: "",
@@ -86,7 +88,8 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
     }
 
     // 比對密碼
-    if (password !== user.password) {
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (isPasswordValid) {
       return res.status(401).json({ message: "密碼錯誤！" });
     }
 
