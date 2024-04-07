@@ -3,7 +3,7 @@ const router = express.Router();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { get } = require("lodash");
-require("dotenv").config();
+
 // --- functions ---
 const { validationResult } = require("express-validator");
 const {
@@ -15,7 +15,6 @@ const {
 const User = require("../../models/user");
 const FollowShip = require("../../models/followShip");
 const UserSetting = require("../../models/userSetting");
-
 
 /** 註冊 */
 router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
@@ -36,8 +35,11 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
   try {
     // 驗證email是否重複
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(401).json({ message: "該Email已存在！" });
-    const hashedPwd = bcrypt.hashSync(password, process.env.SALT_ROUNDS);
+    if (existingUser)
+      return res.status(401).json({ message: "該Email已存在！" });
+
+    const salt = Number.parseInt(process.env.SALT_ROUNDS);
+    const hashedPwd = bcrypt.hashSync(password, salt);
 
     // 建立User資料
     const user = await User.create({
@@ -55,12 +57,12 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
       user: user._id,
       following: [],
       follower: [],
-    })
+    });
     // 初始化User設定
     await UserSetting.create({
       user: user._id,
-      language: 'zh',
-      theme: 'light',
+      language: "zh",
+      theme: 0,
       tags: [],
       emailPrompt: true,
       mobilePrompt: true,
@@ -87,9 +89,10 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
       return res.status(404).json({ message: "Email尚未註冊！" });
     }
 
+    console.log(password);
     // 比對密碼
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (isPasswordValid) {
+    if (!isPasswordValid) {
       return res.status(401).json({ message: "密碼錯誤！" });
     }
 
@@ -97,14 +100,16 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
     const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    return res.status(200).json({ message: "signin success", authToken, userId: user._id });
+    return res
+      .status(200)
+      .json({ message: "signin success", authToken, userId: user._id });
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }
 });
 
 /** 密碼加密(測試用) */
-router.get('/hashPwd', async (req, res) => {
+router.get("/hashPwd", async (req, res) => {
   const password = req.body.password;
   const hashedPwd = hashSync(password, process.env.SALT_ROUNDS);
   res.status(200).json({ hashedPwd });

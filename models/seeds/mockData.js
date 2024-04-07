@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 if (process.env.NODE_ENV !== "production") require("dotenv").config();
 // --- Models ---
 const User = require("../user");
+const FollowShip = require("../followShip");
+const UserSetting = require("../userSetting");
 const Article = require("../article");
 
 // --- MockDatas ---
@@ -21,6 +23,8 @@ async function initDatabase() {
       try {
         // 清除 user data
         await User.deleteMany({});
+        await FollowShip.deleteMany({});
+        await UserSetting.deleteMany({});
         console.log("✅ clear user data success...");
         // 建立 user data
         for (let i = 0; i < userMockData.length; i++) {
@@ -37,6 +41,21 @@ async function initDatabase() {
             status: 0,
           });
           userIdArray.push(newUser._id);
+          // 初始化User追蹤資料
+          await FollowShip.create({
+            user: newUser._id,
+            following: [],
+            follower: [],
+          });
+          // 初始化User設定
+          await UserSetting.create({
+            user: newUser._id,
+            language: "zh",
+            theme: 0,
+            tags: [],
+            emailPrompt: true,
+            mobilePrompt: true,
+          });
         }
         console.log("✅ user data initial success...");
 
@@ -51,7 +70,7 @@ async function initDatabase() {
             content: articleMockData[i].content,
             status: 0,
             subject: articleMockData[i].subject,
-            tags: ['測試'],
+            tags: ["測試"],
             createdAt: new Date(),
             likedByUsers: [],
             comments: [],
