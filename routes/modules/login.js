@@ -84,17 +84,18 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
   const { email, password } = param;
   try {
     // 確認使用者是否註冊
-    const user = await User.findOne({ email }).select("-password").lean();
+    const user = await User.findOne({ email }).lean();
     if (!user) {
       return res.status(404).json({ message: "Email尚未註冊！" });
     }
-    console.log(user)
 
     // 比對密碼
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "密碼錯誤！" });
     }
+
+    const userSetting = await UserSetting.findOne({ user: user._id }).lean();
 
     // 產生並回傳 JWT token
     const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
@@ -104,7 +105,15 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
     return res.status(200).json({
       message: "signin success",
       authToken,
-      userData: user,
+      userData: {
+        uid: user._id,
+        account: user.account,
+        name: user.name,
+        avatar: user.avatar,
+        role: user.role,
+        status: user.status,
+        theme: userSetting.theme,
+      },
     });
   } catch (error) {
     return res.status(400).json({ message: error.message });

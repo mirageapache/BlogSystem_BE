@@ -13,7 +13,7 @@ const UserSettingSchema = new Schema({
   language: {
     type: String,
   },
-  /** 深色模式 */
+  /** 深色模式 [0-明亮 / 1-深色]*/
   theme: {
     type: Number,
     default: 0,
