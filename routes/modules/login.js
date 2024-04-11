@@ -99,7 +99,7 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
 
     // 產生並回傳 JWT token
     const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "1d",
     });
 
     return res.status(200).json({

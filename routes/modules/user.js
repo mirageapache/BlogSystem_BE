@@ -16,12 +16,14 @@ router.get("/", authenticate, async (req, res) => {
 /** 取得特定使用者 */
 router.get("/:id", authenticate, async (req, res) => {
   try {
+    console.log("req = ", req);
     const user = await User.findById(req.params.id).select("-password").lean(); // select 出來的資料排除 password 欄位
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
     return res.json(user);
   } catch (error) {
+    console.log("error", error);
     return res.status(400).json({ message: error.message });
   }
 });
@@ -31,7 +33,9 @@ router.patch("/:id", authenticate, async (req, res) => {
   try {
     const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-    }).select("-password").lean();
+    })
+      .select("-password")
+      .lean();
     return res.json(updatedUser);
   } catch (error) {
     return res.status(400).json({ message: error.message });
