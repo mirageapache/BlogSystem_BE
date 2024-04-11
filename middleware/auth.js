@@ -9,7 +9,9 @@ const authenticate = (req, res, next) => {
   // 驗證 token
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.userId;
+    console.log(decoded)
+    console.log(req);
+    req.param.userId = decoded.userId;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Unauthorized' });
