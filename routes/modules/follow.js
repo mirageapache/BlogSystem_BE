@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const FollowShip = require("../../models/followShip");
-const { authenticate } = require("../../middleware/auth");
+const { authorization } = require("../../middleware/auth");
 
 
 /** 追蹤/取消追蹤使用者
@@ -10,7 +10,7 @@ const { authenticate } = require("../../middleware/auth");
  * @param targetId 被追縱/取消追蹤的使用者id
  * @param followState 追蹤狀態
  */
-router.patch("/followAction", authenticate, async (req, res) => {
+router.patch("/followAction", authorization, async (req, res) => {
   const { action, currentId, targetId } = req.body;
   try {
     // select target user
@@ -54,7 +54,7 @@ router.patch("/followAction", authenticate, async (req, res) => {
  * @param targetId 被追縱/取消追蹤的使用者id
  * @param followState 追蹤狀態
  */
-router.patch("/changeFollowState", authenticate, async (req, res) => {
+router.patch("/changeFollowState", authorization, async (req, res) => {
   const { currentId, targetId, followState } = req.body;
   try {
     const targetUser = await FollowShip.findById(targetId).lean();  // select 目標使用者

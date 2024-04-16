@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../../models/user");
-const { authenticate } = require("../../middleware/auth");
+const { authorization } = require("../../middleware/auth");
 
 /** 取得所有使用者 */
-router.get("/", authenticate, async (req, res) => {
+router.get("/", authorization, async (req, res) => {
   try {
     const users = await User.find().select("-password").lean();
     return res.json(users);
@@ -14,7 +14,7 @@ router.get("/", authenticate, async (req, res) => {
 });
 
 /** 取得特定使用者 */
-router.get("/:id", authenticate, async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     console.log("req = ", req);
     const user = await User.findById(req.params.id).select("-password").lean(); // select 出來的資料排除 password 欄位
@@ -29,7 +29,7 @@ router.get("/:id", authenticate, async (req, res) => {
 });
 
 /** 更新使用者資料 */
-router.patch("/:id", authenticate, async (req, res) => {
+router.patch("/:id", authorization, async (req, res) => {
   try {
     const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -43,7 +43,7 @@ router.patch("/:id", authenticate, async (req, res) => {
 });
 
 /** 刪除使用者 */
-router.delete("/:id", authenticate, async (req, res) => {
+router.delete("/:id", authorization, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
     return res.json({ message: "User deleted" });
