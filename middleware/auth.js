@@ -1,25 +1,23 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 if (process.env.NODE_ENV !== "production") require("dotenv").config();
 
 const authorization = (req, res, next) => {
-  const token = req.header('Authorization');
-  console.log('token = ', token)
-  console.log('JWT_SECRET = ', process.env.JWT_SECRET)
-  console.log('req = ', req)
-  
+  const token = req.header("Authorization");
   if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
+    return res.status(401).json({ message: "No token provided" });
   }
 
-  // 驗證 token
+  console.log(req.params.id);
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  console.log(decoded);
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.param.userId = decoded.userId;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-
-}
+    // 驗證 token
+    // if ((req.params.id = decoded.id)) {
+    //   next();
+    // } else {
+    //   return res.status(401).json({ message: "Unauthorized" });
+    // }
+  } catch (error) {}
+};
 
 module.exports = { authorization };

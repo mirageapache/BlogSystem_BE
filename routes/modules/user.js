@@ -14,9 +14,8 @@ router.get("/", authorization, async (req, res) => {
 });
 
 /** 取得特定使用者 */
-router.get("/:id", async (req, res) => {
+router.post("/:id", authorization, async (req, res) => {
   try {
-    console.log("req = ", req);
     const user = await User.findById(req.params.id).select("-password").lean(); // select 出來的資料排除 password 欄位
     if (!user) {
       return res.status(404).json({ message: "User not found" });
