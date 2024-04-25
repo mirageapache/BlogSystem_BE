@@ -9,7 +9,8 @@ const authorization = (req, res, next) => {
   }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (decoded && req.params.id === decoded.userId) {
+    // 參數帶在網址 => req.params / 參數包在body => req.body.param，兩個都要判斷
+    if (decoded && (req.params.id === decoded.userId || req.body.id === decoded.userId)) {
       next();
     } else {
       return res.status(401).json({ message: "Unauthorized" , error: err});

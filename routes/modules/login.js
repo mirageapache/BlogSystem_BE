@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const { get } = require("lodash");
 
 // --- functions ---
+const { authorization } = require("../../middleware/auth");
 const { validationResult } = require("express-validator");
 const {
   validateEmail,
@@ -106,7 +107,7 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
       message: "signin success",
       authToken,
       userData: {
-        uid: user._id,
+        userId: user._id,
         account: user.account,
         name: user.name,
         avatar: user.avatar,
@@ -115,6 +116,21 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
         theme: userSetting.theme,
       },
     });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+});
+
+/** 身分驗證
+ * 使用userId及authToken進行驗證
+ */
+router.post("/auth", authorization, async (req, res) => {
+  try {
+    const user = await User.findById(req.body.id).lean();
+    if (!user) {
+      return res.status(404).json({ message: "authorization failed" });
+    }
+    return res.status(200).json({message: "authorization confrimed"});
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }
