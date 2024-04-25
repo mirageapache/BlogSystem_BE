@@ -12,6 +12,7 @@ const {
   validatePassword,
   checkAccountExist,
 } = require("../../middleware/validator/userValidation");
+const { getRandomColor } = require("../../middleware/commonUtils");
 // --- models ---
 const User = require("../../models/user");
 const FollowShip = require("../../models/followShip");
@@ -49,6 +50,7 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
       account: account,
       name: email.split("@")[0],
       avatar: "",
+      bgColor: getRandomColor(),
       userRole: 0,
       createdAt: new Date(),
       status: 0,
