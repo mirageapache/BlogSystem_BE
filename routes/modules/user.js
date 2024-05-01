@@ -17,14 +17,14 @@ router.get("/", async (req, res) => {
 router.post("/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-    .select({password: 0}) // 排除 password
-    .lean();
+      .select({ password: 0 }) // 排除 password
+      .lean();
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
     return res.json({
       userId: user._id,
-      ...user
+      ...user,
     });
   } catch (error) {
     console.log("error", error);
@@ -36,14 +36,14 @@ router.post("/:id", async (req, res) => {
 router.post("/own/:id", authorization, async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-    .select({password: 0}) // 排除 password
-    .lean();
+      .select({ password: 0 }) // 排除 password
+      .lean();
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-     return res.json({
+    return res.json({
       userId: user._id,
-      ...user
+      ...user,
     });
   } catch (error) {
     console.log("error", error);
@@ -51,19 +51,13 @@ router.post("/own/:id", authorization, async (req, res) => {
   }
 });
 
-
 /** 個人-更新使用者資料 */
 router.patch("/own/:id", authorization, async (req, res) => {
-  console.log(req.body.formData)
-
   try {
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body.formData, {
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     })
-      .select({
-        _id: 'userId',
-        password: 0, 
-      })
+      .select({ password: 0 })
       .lean();
     return res.json(updatedUser);
   } catch (error) {
