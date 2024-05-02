@@ -2,7 +2,23 @@ const express = require("express");
 const router = express.Router();
 const User = require("../../models/user");
 const { authorization } = require("../../middleware/auth");
-const { imgurFileHandler, uploadFile } = require('../../middleware/fileUtils')
+const { imgurFileHandler, uploadFile } = require("../../middleware/fileUtils");
+const multer = require("multer");
+
+// 設定 Multer 上傳的存儲引擎和路徑
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/"); // 設定上傳的存儲路徑
+  },
+  filename: function (req, file, cb) {
+    cb(
+      null,
+      file.fieldname + "-" + Date.now() + path.extname(file.originalname)
+    ); // 設定上傳的檔案名稱
+  },
+});
+// 創建 Multer 實例
+const upload = multer({ storage: storage });
 
 /** 取得所有使用者 */
 router.get("/", async (req, res) => {
@@ -54,29 +70,30 @@ router.post("/own/:id", authorization, async (req, res) => {
 
 /** 個人-更新使用者資料 */
 router.patch("/own/:id", authorization, uploadFile, async (req, res) => {
-
-  console.log(req.files);
+  console.log(req.file);
   const { email, name, account, bio } = req.body;
-  const { avatar = null } = req.files || {}
+  const { avatar = null } = req.file || {};
 
   const filePaths = {
-    updatedAvatar: avatar ? await imgurFileHandler(avatar[0], 'avatar') : null
-  }
-  console.log(filePaths);
+    updatedAvatar: avatar ? await imgurFileHandler(avatar[0], "avatar") : null,
+  };
 
   try {
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, {
-      email,
-      name,
-      account,
-      bio,
-      avatar: filePaths.updatedAvatar,
-    }, {
-      new: true, // true 代表會回傳更新後的資料
-    })
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        email,
+        name,
+        account,
+        bio,
+        avatar: filePaths.updatedAvatar,
+      },
+      {
+        new: true, // true 代表會回傳更新後的資料
+      }
+    )
       .select({ password: 0 })
       .lean();
-    console.log(updatedUser);
     return res.json(updatedUser);
   } catch (error) {
     return res.status(400).json({ message: error.message });
