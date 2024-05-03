@@ -7,33 +7,24 @@ imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 /** 處理檔案上傳 */
 const uploadFile = multer({
   dest: "temp/",
-  fileFilter: function (_req, file, cb) {
+  fileFilter: function (req, file, cb) {
     // 檢查檔案類型
     if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("只能上傳圖片"));
+      return cb(new Error("image only"));
     }
-    // 如果檔案符合標準，則接受上傳
-    cb(null, true);
-  },
-}).single("avatarFile");
+    cb(null, true); // 如果檔案符合標準，則接受上傳
+  }
+});
 
-/** 格式化圖片檔 */
-const imgurFileHandler = async (file, type) => {
+/** 處理imgur圖片檔 */
+const imgurFileHandler = async (file) => {
   if (!file) return null;
-  const resizeOptions =
-    type === "avatar"
-      ? {
-          width: 240,
-          height: 240,
-          fit: "cover",
-          position: sharp.strategy.attention,
-        }
-      : {
-          width: 1278,
-          height: 400,
-          fit: "cover",
-          position: sharp.strategy.entropy,
-        };
+  const resizeOptions = {
+    width: 240,
+    height: 240,
+    fit: "cover",
+    position: sharp.strategy.attention,
+  }
   const buffer = await sharp(file.path).resize(resizeOptions).toBuffer();
   const base64 = buffer.toString("base64");
   const img = await imgur.uploadBase64(base64);
