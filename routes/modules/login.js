@@ -5,12 +5,14 @@ const bcrypt = require("bcryptjs");
 const { get } = require("lodash");
 
 // --- functions ---
+const { authorization } = require("../../middleware/auth");
 const { validationResult } = require("express-validator");
 const {
   validateEmail,
   validatePassword,
   checkAccountExist,
 } = require("../../middleware/validator/userValidation");
+const { getRandomColor } = require("../../middleware/commonUtils");
 // --- models ---
 const User = require("../../models/user");
 const FollowShip = require("../../models/followShip");
@@ -48,6 +50,7 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
       account: account,
       name: email.split("@")[0],
       avatar: "",
+      bgColor: getRandomColor(),
       userRole: 0,
       createdAt: new Date(),
       status: 0,
@@ -99,14 +102,14 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
 
     // 產生並回傳 JWT token
     const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "1d",
     });
 
     return res.status(200).json({
       message: "signin success",
       authToken,
       userData: {
-        uid: user._id,
+        userId: user._id,
         account: user.account,
         name: user.name,
         avatar: user.avatar,
@@ -115,6 +118,21 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
         theme: userSetting.theme,
       },
     });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+});
+
+/** 身分驗證
+ * 使用userId及authToken進行驗證
+ */
+router.post("/auth", authorization, async (req, res) => {
+  try {
+    const user = await User.findById(req.body.id).lean();
+    if (!user) {
+      return res.status(404).json({ message: "authorization failed" });
+    }
+    return res.status(200).json({message: "authorization confrimed"});
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }

@@ -10,6 +10,9 @@ const Article = require("../article");
 const { userMockData } = require("./userMockData");
 const { articleMockData } = require("./articleMockData");
 
+// --- functions ---
+const { getRandomColor } = require("../../middleware/commonUtils");
+
 async function initDatabase() {
   // DB connection
   mongoose.set("strictQuery", false);
@@ -35,6 +38,7 @@ async function initDatabase() {
             account: username,
             name: username,
             avatar: "",
+            bgColor: getRandomColor(),
             bio: `Hi, I'm ${username}`,
             userRole: 0,
             createdAt: new Date(),

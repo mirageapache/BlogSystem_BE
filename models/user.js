@@ -29,6 +29,10 @@ const UserSchema = new Schema({
     type: String,
     default: "",
   },
+  /** 背景顏色 */
+  bgColor: {
+    type: String,
+  },
   /** 自介(biographical) */
   bio: {
     type: String,
