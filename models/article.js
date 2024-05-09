@@ -35,7 +35,7 @@ const ArticleSchema = new Schema({
     type: String,
   },
   /** 分類標籤 */
-  tags: {
+  hashTag: {
     type: [String],
   },
   /** 建立日期時間 */

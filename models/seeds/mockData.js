@@ -56,9 +56,8 @@ async function initDatabase() {
             user: newUser._id,
             language: "zh",
             theme: 0,
-            tags: [],
             emailPrompt: true,
-            mobilePrompt: true,
+            mobilePrompt: false,
           });
         }
         console.log("✅ user data initial success...");

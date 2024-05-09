@@ -56,21 +56,19 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
       status: 0,
     });
     // 初始化User追蹤資料
-    await FollowShip.create({
+    const follow = await FollowShip.create({
       user: user._id,
       following: [],
       follower: [],
     });
     // 初始化User設定
-    await UserSetting.create({
+    const usersetting = await UserSetting.create({
       user: user._id,
       language: "zh",
       theme: 0,
-      tags: [],
       emailPrompt: true,
-      mobilePrompt: true,
+      mobilePrompt: false,
     });
-
     return res.status(200).json({ message: "success" });
   } catch (error) {
     return res.status(400).json({ message: error.message });
