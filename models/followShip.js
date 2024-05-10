@@ -7,6 +7,7 @@ const FollowShipSchema = new Schema({
   /** 使用者id */
   user: {
     type: mongoose.Schema.Types.ObjectId,
+    select: false,
     ref: User,
   },
   /** 追蹤清單

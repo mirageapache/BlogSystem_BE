@@ -12,7 +12,6 @@ const UserSchema = new Schema({
   /** 密碼 */
   password: {
     type: String,
-    select: false,
     required: true,
   },
   /** 帳號() */

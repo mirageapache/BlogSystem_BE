@@ -5,6 +5,7 @@ const { authorization } = require("../../middleware/auth");
 const { imgurFileHandler, uploadFile } = require("../../middleware/fileUtils");
 const UserSetting = require("../../models/userSetting");
 const { isEmpty } = require("lodash");
+const { validateEmail, emailExisting, validateAccount, accountExisting } = require("../../middleware/validator/userValidation");
 
 /** 取得所有使用者 */
 router.get("/", async (req, res) => {
@@ -55,12 +56,15 @@ router.post("/own/:id", authorization, async (req, res) => {
 });
 
 /** 個人-更新使用者資料 */
-router.patch("/own/:id", authorization, uploadFile.single('avatarFile'), async (req, res) => {
+router.patch("/own/:id", authorization, [validateEmail, validateAccount], uploadFile.single('avatarFile'), async (req, res) => {
   const { email, name, account, bio, language, emailPrompt, mobilePrompt } = req.body;
   const avatarFile = req.file || {};
   const filePaths = !isEmpty(avatarFile) ? await imgurFileHandler(avatarFile) : null; // imgur圖片檔網址(路徑)
   
   try {
+    emailExisting(email);
+    accountExisting(account);
+
     const updateUser = await User.findByIdAndUpdate( req.params.id, 
       { email, name, account,bio,avatar: filePaths },
       { new: true } // true 代表會回傳更新後的資料 

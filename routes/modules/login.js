@@ -11,6 +11,7 @@ const {
   validateEmail,
   validatePassword,
   checkAccountExist,
+  emailExisting,
 } = require("../../middleware/validator/userValidation");
 const { getRandomColor } = require("../../middleware/commonUtils");
 // --- models ---
@@ -35,10 +36,8 @@ router.post("/signup", [validateEmail, validatePassword], async (req, res) => {
   }
 
   try {
-    // 驗證email是否重複
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(401).json({ message: "該Email已存在！" });
+    // 檢查email是否已存在
+    await emailExisting(email);
 
     const salt = Number.parseInt(process.env.SALT_ROUNDS);
     const hashedPwd = bcrypt.hashSync(password, salt);
@@ -97,7 +96,6 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
     }
 
     const userSetting = await UserSetting.findOne({ user: user._id }).lean();
-
     // 產生並回傳 JWT token
     const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
@@ -113,7 +111,7 @@ router.post("/signin", [validateEmail, validatePassword], async (req, res) => {
         avatar: user.avatar,
         role: user.role,
         status: user.status,
-        theme: userSetting.theme,
+        ...userSetting,
       },
     });
   } catch (error) {
