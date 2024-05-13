@@ -9,10 +9,10 @@ router.get("/", async (req, res) => {
   const { userId } = req.body;
 
   try {
-    const followList = await FollowShip.findOne({ user: userId})
-    .populate("user", {_id:1, account:1, name:1, avatar:1, bgColor:1 })
-    .lean()
-    .exec();
+    const followList = await FollowShip.findOne({ user: userId })
+      .populate("user", { _id: 1, account: 1, name: 1, avatar: 1, bgColor: 1 })
+      .lean()
+      .exec();
 
     res.status(200).json(followList);
   } catch (error) {
@@ -31,39 +31,50 @@ router.patch("/followAction", authorization, async (req, res) => {
   const currentId = userId;
 
   try {
-    const targetUser = await FollowShip.findOne({user: targetId}).lean();  // select 目標使用者
-    const currentUser = await FollowShip.findOne({user: currentId}).lean(); // select 操作使用者
+    const targetUser = await FollowShip.findOne({ user: targetId }).lean(); // select 目標使用者
+    const currentUser = await FollowShip.findOne({ user: currentId }).lean(); // select 操作使用者
     if (!targetUser) return res.status(404).json({ message: "找不到該使用者" });
     let newFollowings = new Array(...currentUser.following); // following => 自己的追蹤名單
     let newFollowers = new Array(...targetUser.follower); // follower => 目標使用者的粉絲名單
     let followList;
 
-    const handleSetDB = async () => {
+    console.log(newFollowings);
+
+    const handleSetDB = async (followings, followers) => {
       // 回寫至DB
       const result = await FollowShip.findOneAndUpdate(
-        {user: currentId}, 
-        { following: newFollowings },
+        { user: currentId },
+        { following: followings },
         { new: true }
       );
-      
+
       await FollowShip.findOneAndUpdate(
-        {user: targetId}, 
-        { follower: newFollowers }
+        { user: targetId },
+        { follower: followers }
       );
       return result;
-    }
+    };
 
-    if(action === "follow"){
+    if (action === "follow") {
       // follow action
-      if(!Array.inclues(targetId)){
+      console.log(newFollowings.includes(targetId));
+
+      if (!newFollowings.includes(targetId)) {
         newFollowings.push(targetId);
-        newFollowers.push({userId: currentId, state: 0});
+        newFollowers.push({ userId: currentId, state: 0 });
         followList = handleSetDB(newFollowings, newFollowers);
       }
     } else {
       // unfollow action
-      const newFollowingArr = newFollowings.filter((item) => item !== targetId);
-      const newFollowerArr = newFollowers.filter((item) => item !== currentId);
+      const newFollowingArr = newFollowings.filter(
+        (item) => item.toString() !== targetId
+      );
+      const newFollowerArr = newFollowers.filter(
+        (item) => item.userId.toString() !== currentId
+      );
+
+      console.log(newFollowingArr);
+      console.log(newFollowerArr);
       followList = handleSetDB(newFollowingArr, newFollowerArr);
     }
 
@@ -81,13 +92,14 @@ router.patch("/followAction", authorization, async (req, res) => {
 router.patch("/changeFollowState", authorization, async (req, res) => {
   const { currentId, targetId, followState } = req.body;
   try {
-    const targetUser = await FollowShip.findById(targetId).lean();  // select 目標使用者
+    const targetUser = await FollowShip.findById(targetId).lean(); // select 目標使用者
     let newFollowers = targetUser.follower;
-    newFollowers.map(item => { if(item.userId === currentId) item.state = followState; });
-    const followList = await FollowShip.findOneAndUpdate(
-      targetId,
-      { follower: newFollowers},
-    );
+    newFollowers.map((item) => {
+      if (item.userId === currentId) item.state = followState;
+    });
+    const followList = await FollowShip.findOneAndUpdate(targetId, {
+      follower: newFollowers,
+    });
     return res.status(200).json({ message: "success", followList });
   } catch (error) {
     return res.status(400).json({ message: error.message });
