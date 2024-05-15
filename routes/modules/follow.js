@@ -34,11 +34,9 @@ router.patch("/followAction", authorization, async (req, res) => {
     const targetUser = await FollowShip.findOne({ user: targetId }).lean(); // select 目標使用者
     const currentUser = await FollowShip.findOne({ user: currentId }).lean(); // select 操作使用者
     if (!targetUser) return res.status(404).json({ message: "找不到該使用者" });
-    let newFollowings = new Array(...currentUser.following); // following => 自己的追蹤名單
-    let newFollowers = new Array(...targetUser.follower); // follower => 目標使用者的粉絲名單
+    let newFollowings = currentUser.following.map((obj) => obj.toString()); // following => 自己的追蹤名單
+    let newFollowers = targetUser.follower.map((obj) => obj.userId.toString()); // follower => 目標使用者的粉絲名單
     let followList;
-
-    console.log(newFollowings);
 
     const handleSetDB = async (followings, followers) => {
       // 回寫至DB
@@ -57,8 +55,6 @@ router.patch("/followAction", authorization, async (req, res) => {
 
     if (action === "follow") {
       // follow action
-      console.log(newFollowings.includes(targetId));
-
       if (!newFollowings.includes(targetId)) {
         newFollowings.push(targetId);
         newFollowers.push({ userId: currentId, state: 0 });
@@ -66,15 +62,8 @@ router.patch("/followAction", authorization, async (req, res) => {
       }
     } else {
       // unfollow action
-      const newFollowingArr = newFollowings.filter(
-        (item) => item.toString() !== targetId
-      );
-      const newFollowerArr = newFollowers.filter(
-        (item) => item.userId.toString() !== currentId
-      );
-
-      console.log(newFollowingArr);
-      console.log(newFollowerArr);
+      const newFollowingArr = newFollowings.filter((item) => item !== targetId);
+      const newFollowerArr = newFollowers.filter((item) => item.userId !== currentId);
       followList = handleSetDB(newFollowingArr, newFollowerArr);
     }
 
