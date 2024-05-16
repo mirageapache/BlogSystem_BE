@@ -10,7 +10,8 @@ router.get("/", async (req, res) => {
 
   try {
     const followList = await FollowShip.findOne({ user: userId })
-      .populate("user", { _id: 1, account: 1, name: 1, avatar: 1, bgColor: 1 })
+      .populate("following", { _id: 1, account: 1, name: 1, avatar: 1, bgColor: 1 })
+      .populate("follower", { _id: 1, account: 1, name: 1, avatar: 1, bgColor: 1 })
       .lean()
       .exec();
 
@@ -38,34 +39,56 @@ router.patch("/followAction", authorization, async (req, res) => {
     let newFollowers = targetUser.follower.map((obj) => obj.userId.toString()); // follower => 目標使用者的粉絲名單
     let followList;
 
-    const handleSetDB = async (followings, followers) => {
-      // 回寫至DB
-      const result = await FollowShip.findOneAndUpdate(
-        { user: currentId },
-        { following: followings },
-        { new: true }
-      );
+    // const handleSetDB = async (followings, followers) => {
+    //   // 回寫至DB
+    //   const followingRes = await FollowShip.findOneAndUpdate(
+    //     { user: currentId },
+    //     { following: followings },
+    //     { new: true }
+    //   );
 
-      await FollowShip.findOneAndUpdate(
-        { user: targetId },
-        { follower: followers }
-      );
-      return result;
-    };
+    //   const followerRes = await FollowShip.findOneAndUpdate(
+    //     { user: targetId },
+    //     { follower: followers },
+    //     { new: true }
+    //   );
+    //   console.log(followingRes, followerRes)
+    //   return {followingRes, followerRes};
+    // };
 
     if (action === "follow") {
       // follow action
       if (!newFollowings.includes(targetId)) {
         newFollowings.push(targetId);
         newFollowers.push({ userId: currentId, state: 0 });
-        followList = handleSetDB(newFollowings, newFollowers);
+        // console.log(newFollowings, newFollowers);
+        // followList = await handleSetDB(newFollowings, newFollowers);
       }
     } else {
       // unfollow action
-      const newFollowingArr = newFollowings.filter((item) => item !== targetId);
-      const newFollowerArr = newFollowers.filter((item) => item.userId !== currentId);
-      followList = handleSetDB(newFollowingArr, newFollowerArr);
+      // const newFollowingArr = newFollowings.filter((item) => item !== targetId);
+      // const newFollowerArr = newFollowers.filter((item) => item.userId !== currentId);
+      // console.log(newFollowingArr, newFollowerArr);
+      // followList = await handleSetDB(newFollowingArr, newFollowerArr);
+      const rmFollowingIndex = newFollowings.indexOf(targetId);
+      if(rmFollowingIndex !== -1) newFollowings.splice(rmFollowingIndex, 1);
+      const rmFollowerIndex = newFollowers.indexOf(currentId);
+      if(rmFollowerIndex !== -1) newFollowers.splice(rmFollowerIndex, 1);
     }
+
+    // 回寫至DB
+    const followingRes = await FollowShip.findOneAndUpdate(
+      { user: currentId },
+      { following: newFollowings },
+      { new: true }
+    );
+
+    const followerRes = await FollowShip.findOneAndUpdate(
+      { user: targetId },
+      { follower: newFollowers },
+      { new: true }
+    );
+    console.log(followingRes, followerRes)
 
     return res.status(200).json({ message: "success", followList });
   } catch (error) {

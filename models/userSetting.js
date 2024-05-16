@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const User = require("./user");
 
 /** 使用者設定 User Setting Schema */
 const UserSettingSchema = new Schema({
@@ -8,7 +7,7 @@ const UserSettingSchema = new Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     select: false,
-    ref: User,
+    ref: "User",
   },
   /** 語言 */
   language: {

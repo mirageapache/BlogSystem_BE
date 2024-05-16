@@ -1,15 +1,13 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 // const { v4: uuidv4 } = require("uuid");
-const User = require("./user");
-const Comment = require("./comment");
 
 /** 文章 Article Schema */
 const ArticleSchema = new Schema({
   /** 作者 */
   author: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: User,
+    ref: "User",
     required: true,
   },
   /** 標題 */
@@ -46,12 +44,12 @@ const ArticleSchema = new Schema({
   /** 喜歡的讀者id */
   likedByUsers: {
     type: [mongoose.Schema.Types.ObjectId],
-    ref: User,
+    ref: "User",
   },
   /** 留言串 */
   comments: {
     type: [mongoose.Schema.Types.ObjectId],
-    ref: Comment,
+    ref: "Comment",
   },
 });
 

@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const User = require("./user");
 
 /** 追蹤 Follow Ship Schema */
 const FollowShipSchema = new Schema({
@@ -8,7 +7,7 @@ const FollowShipSchema = new Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     select: false,
-    ref: User,
+    ref: "User",
   },
   /** 追蹤清單
    * 自己追蹤其他使用者
@@ -16,19 +15,18 @@ const FollowShipSchema = new Schema({
    */
   following: {
     type: [mongoose.Schema.Types.ObjectId],
-    ref: User,
+    ref: "User",
   },
   /** 粉絲清單
    * 其他使用者追蹤自己
    * state為訂閱狀態 state為訂閱狀態 [0-追蹤(不主動推播) / 1-主動推播]
    */
   follower: {
-    
     type: [
       {
         userId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: User,
+          ref: "User",
         },
         state: {
           type: Number,
@@ -36,7 +34,7 @@ const FollowShipSchema = new Schema({
         },
       },
     ],
-    ref: User,
+    ref: "User",
   },
 });
 
