@@ -1,20 +1,30 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../../models/user");
 const FollowShip = require("../../models/followShip");
 const { authorization } = require("../../middleware/auth");
 
 /** 取得追蹤清單 */
 router.get("/", async (req, res) => {
-  const { userId } = req.body;
+  const { userId } = req.query;
 
   try {
     const followList = await FollowShip.findOne({ user: userId })
-      .populate("following", { _id: 1, account: 1, name: 1, avatar: 1, bgColor: 1 })
-      .populate("follower", { _id: 1, account: 1, name: 1, avatar: 1, bgColor: 1 })
+      .populate("following", {
+        _id: 1,
+        account: 1,
+        name: 1,
+        avatar: 1,
+        bgColor: 1,
+      })
+      .populate("follower", {
+        _id: 1,
+        account: 1,
+        name: 1,
+        avatar: 1,
+        bgColor: 1,
+      })
       .lean()
       .exec();
-
     res.status(200).json(followList);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -39,41 +49,18 @@ router.patch("/followAction", authorization, async (req, res) => {
     let newFollowers = targetUser.follower.map((obj) => obj.userId.toString()); // follower => 目標使用者的粉絲名單
     let followList;
 
-    // const handleSetDB = async (followings, followers) => {
-    //   // 回寫至DB
-    //   const followingRes = await FollowShip.findOneAndUpdate(
-    //     { user: currentId },
-    //     { following: followings },
-    //     { new: true }
-    //   );
-
-    //   const followerRes = await FollowShip.findOneAndUpdate(
-    //     { user: targetId },
-    //     { follower: followers },
-    //     { new: true }
-    //   );
-    //   console.log(followingRes, followerRes)
-    //   return {followingRes, followerRes};
-    // };
-
     if (action === "follow") {
       // follow action
       if (!newFollowings.includes(targetId)) {
         newFollowings.push(targetId);
         newFollowers.push({ userId: currentId, state: 0 });
-        // console.log(newFollowings, newFollowers);
-        // followList = await handleSetDB(newFollowings, newFollowers);
       }
     } else {
       // unfollow action
-      // const newFollowingArr = newFollowings.filter((item) => item !== targetId);
-      // const newFollowerArr = newFollowers.filter((item) => item.userId !== currentId);
-      // console.log(newFollowingArr, newFollowerArr);
-      // followList = await handleSetDB(newFollowingArr, newFollowerArr);
       const rmFollowingIndex = newFollowings.indexOf(targetId);
-      if(rmFollowingIndex !== -1) newFollowings.splice(rmFollowingIndex, 1);
+      if (rmFollowingIndex !== -1) newFollowings.splice(rmFollowingIndex, 1);
       const rmFollowerIndex = newFollowers.indexOf(currentId);
-      if(rmFollowerIndex !== -1) newFollowers.splice(rmFollowerIndex, 1);
+      if (rmFollowerIndex !== -1) newFollowers.splice(rmFollowerIndex, 1);
     }
 
     // 回寫至DB
@@ -88,7 +75,6 @@ router.patch("/followAction", authorization, async (req, res) => {
       { follower: newFollowers },
       { new: true }
     );
-    console.log(followingRes, followerRes)
 
     return res.status(200).json({ message: "success", followList });
   } catch (error) {
