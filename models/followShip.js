@@ -11,7 +11,7 @@ const FollowShipSchema = new Schema({
   },
   /** 追蹤清單
    * 自己追蹤其他使用者
-   * 
+   *
    */
   following: {
     type: [mongoose.Schema.Types.ObjectId],
@@ -34,7 +34,6 @@ const FollowShipSchema = new Schema({
         },
       },
     ],
-    ref: "User",
   },
 });
 
