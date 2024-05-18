@@ -47,7 +47,6 @@ router.patch("/followAction", authorization, async (req, res) => {
     if (!targetUser) return res.status(404).json({ message: "找不到該使用者" });
     let newFollowings = currentUser.following.map((obj) => obj.toString()); // following => 自己的追蹤名單
     let newFollowers = targetUser.follower.map((obj) => obj.userId.toString()); // follower => 目標使用者的粉絲名單
-    let followList;
 
     if (action === "follow") {
       // follow action
@@ -69,14 +68,19 @@ router.patch("/followAction", authorization, async (req, res) => {
       { following: newFollowings },
       { new: true }
     );
-
     const followerRes = await FollowShip.findOneAndUpdate(
       { user: targetId },
       { follower: newFollowers },
       { new: true }
     );
 
-    return res.status(200).json({ message: "success", followList });
+    return res
+      .status(200)
+      .json({
+        message: "success",
+        following: followingRes,
+        follower: followerRes,
+      });
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }
@@ -88,16 +92,20 @@ router.patch("/followAction", authorization, async (req, res) => {
  * @param followState 追蹤狀態
  */
 router.patch("/changeFollowState", authorization, async (req, res) => {
-  const { currentId, targetId, followState } = req.body;
+  const { userId, targetId, followState } = req.body;
+  const currentId = userId;
+
   try {
-    const targetUser = await FollowShip.findById(targetId).lean(); // select 目標使用者
+    const targetUser = await FollowShip.findOne({ user: targetId }).lean(); // select 目標使用者
     let newFollowers = targetUser.follower;
     newFollowers.map((item) => {
       if (item.userId === currentId) item.state = followState;
     });
-    const followList = await FollowShip.findOneAndUpdate(targetId, {
-      follower: newFollowers,
-    });
+    const followList = await FollowShip.findOneAndUpdate(
+      { user: targetId },
+      { follower: newFollowers },
+      { new: true }
+    );
     return res.status(200).json({ message: "success", followList });
   } catch (error) {
     return res.status(400).json({ message: error.message });
