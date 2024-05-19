@@ -5,7 +5,12 @@ const { authorization } = require("../../middleware/auth");
 const { imgurFileHandler, uploadFile } = require("../../middleware/fileUtils");
 const UserSetting = require("../../models/userSetting");
 const { isEmpty } = require("lodash");
-const { validateEmail, emailExisting, validateAccount, accountExisting } = require("../../middleware/validator/userValidation");
+const {
+  validateEmail,
+  emailExisting,
+  validateAccount,
+  accountExisting,
+} = require("../../middleware/validator/userValidation");
 
 /** 取得所有使用者 */
 router.get("/", async (req, res) => {
@@ -41,7 +46,9 @@ router.post("/own/:id", authorization, async (req, res) => {
     const user = await User.findById(req.params.id)
       .select({ password: 0 }) // 排除 password
       .lean();
-    const userSetting = await UserSetting.findOne({user: req.params.id}).lean();
+    const userSetting = await UserSetting.findOne({
+      user: req.params.id,
+    }).lean();
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -56,41 +63,54 @@ router.post("/own/:id", authorization, async (req, res) => {
 });
 
 /** 個人-更新使用者資料 */
-router.patch("/own/:id", authorization, [validateEmail, validateAccount], uploadFile.single('avatarFile'), async (req, res) => {
-  const { email, name, account, bio, language, emailPrompt, mobilePrompt } = req.body;
-  const avatarFile = req.file || {};
-  const filePaths = !isEmpty(avatarFile) ? await imgurFileHandler(avatarFile) : null; // imgur圖片檔網址(路徑)
-  
-  try {
-    emailExisting(email);
-    accountExisting(account);
+router
+  .patch("/own/:id", authorization, [validateEmail, validateAccount], uploadFile.single("avatarFile"),
+  async (req, res) => {
+    const { email, name, account, bio, language, emailPrompt, mobilePrompt } = req.body;
+    const avatarFile = req.file || {};
+    const filePaths = !isEmpty(avatarFile)
+      ? await imgurFileHandler(avatarFile)
+      : null; // imgur圖片檔網址(路徑)
 
-    const updateUser = await User.findByIdAndUpdate( req.params.id, 
-      { email, name, account,bio,avatar: filePaths },
-      { new: true } // true 代表會回傳更新後的資料 
-    )
-    .select({ password: 0 })
-    .lean();
+    try {
+      if (email) emailExisting(email);
+      if (account) accountExisting(account);
 
-    const updateUserSetting = await UserSetting.findOneAndUpdate(
-      { user: req.params.id }, 
-      { language, emailPrompt: Boolean(emailPrompt), mobilePrompt: Boolean(mobilePrompt) },
-      { new: true }
-    )
-    .lean();
+      const updateUser = await User.findByIdAndUpdate(
+        req.params.id,
+        { email, name, account, bio, avatar: filePaths },
+        { new: true } // true 代表會回傳更新後的資料
+      )
+        .select({ password: 0 })
+        .lean();
 
-    const userData = { ...updateUser, ...updateUserSetting };
-    return res.status(200).json(userData);
-  } catch (error) {
-    return res.status(400).json({ message: error.message });
+      const updateUserSetting = await UserSetting.findOneAndUpdate(
+        { user: req.params.id },
+        {
+          language,
+          emailPrompt: Boolean(emailPrompt),
+          mobilePrompt: Boolean(mobilePrompt),
+        },
+        { new: true }
+      ).lean();
+
+      const userData = { ...updateUser, ...updateUserSetting };
+      return res.status(200).json(userData);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
   }
-});
+);
 
 /** 個人-修改(背景)深色模式 */
-router.patch("/own/theme/:id", authorization, async (req, res) =>{
+router.patch("/own/theme/:id", authorization, async (req, res) => {
   const { theme } = req.body;
   try {
-    const result = await UserSetting.findOneAndUpdate({ user: req.params.id }, { theme },{ new: true }).lean();
+    const result = await UserSetting.findOneAndUpdate(
+      { user: req.params.id },
+      { theme },
+      { new: true }
+    ).lean();
     return res.status(200).json(result);
   } catch (error) {
     return res.status(400).json({ message: error.message });
