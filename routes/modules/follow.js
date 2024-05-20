@@ -16,12 +16,12 @@ router.get("/", async (req, res) => {
         avatar: 1,
         bgColor: 1,
       })
-      .populate("follower", {
-        _id: 1,
-        account: 1,
-        name: 1,
-        avatar: 1,
-        bgColor: 1,
+      .populate({
+        path: "follower",
+        populate: {
+          path: "user",
+          select: "_id account name avatar bgColor",
+        },
       })
       .lean()
       .exec();
@@ -46,7 +46,7 @@ router.patch("/followAction", authorization, async (req, res) => {
     const currentUser = await FollowShip.findOne({ user: currentId }).lean(); // select 操作使用者
     if (!targetUser) return res.status(404).json({ message: "找不到該使用者" });
     let newFollowings = currentUser.following.map((obj) => obj.toString()); // following => 自己的追蹤名單
-    let newFollowers = targetUser.follower.map((obj) => obj.userId.toString()); // follower => 目標使用者的粉絲名單
+    let newFollowers = targetUser.follower.map((obj) => obj.user.toString()); // follower => 目標使用者的粉絲名單
 
     if (action === "follow") {
       // follow action
@@ -74,13 +74,11 @@ router.patch("/followAction", authorization, async (req, res) => {
       { new: true }
     );
 
-    return res
-      .status(200)
-      .json({
-        message: "success",
-        following: followingRes,
-        follower: followerRes,
-      });
+    return res.status(200).json({
+      message: "success",
+      following: followingRes,
+      follower: followerRes,
+    });
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }
