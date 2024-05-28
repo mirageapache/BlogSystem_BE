@@ -1,11 +1,11 @@
-const User = require("../../models/user");
-const { imgurFileHandler } = require("../../middleware/fileUtils");
-const UserSetting = require("../../models/userSetting");
+const User = require("../models/user");
+const { imgurFileHandler } = require("../middleware/fileUtils");
+const UserSetting = require("../models/userSetting");
 const { isEmpty } = require("lodash");
 const {
   emailExisting,
   accountExisting,
-} = require("../../middleware/validator/userValidation");
+} = require("../middleware/validator/userValidation");
 
 const userController = {
   /** 取得所有使用者 */
