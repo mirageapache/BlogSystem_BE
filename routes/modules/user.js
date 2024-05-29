@@ -9,7 +9,10 @@ const {
 } = require("../../middleware/validator/userValidation");
 
 /** 取得所有使用者 */
-router.get("/", userController.getAllUserData);
+router.get("/", userController.getAllUserList);
+
+/** 取得使用者清單(含追蹤資料) */
+router.get("/userList", userController.getUserListWithFollow);
 
 /** 取得一般使用者資料 */
 router.post("/:id", userController.getOtherUserData);
@@ -18,7 +21,13 @@ router.post("/:id", userController.getOtherUserData);
 router.post("/own/:id", authorization, userController.getOwnUserData);
 
 /** 個人-更新使用者資料 */
-router.patch( "/own/:id", authorization, [validateEmail, validateAccount], uploadFile.single("avatarFile"), userController.updateUserData);
+router.patch(
+  "/own/:id",
+  authorization,
+  [validateEmail, validateAccount],
+  uploadFile.single("avatarFile"),
+  userController.updateUserData
+);
 
 /** 個人-修改(背景)深色模式 */
 router.patch("/own/theme/:id", authorization, userController.setDarkMode);

@@ -1,7 +1,7 @@
-const User = require("../models/user");
-const { imgurFileHandler } = require("../middleware/fileUtils");
-const UserSetting = require("../models/userSetting");
 const { isEmpty } = require("lodash");
+const User = require("../models/user");
+const UserSetting = require("../models/userSetting");
+const { imgurFileHandler } = require("../middleware/fileUtils");
 const {
   emailExisting,
   accountExisting,
@@ -9,12 +9,46 @@ const {
 
 const userController = {
   /** 取得所有使用者 */
-  getAllUserData: async (req, res) => {
+  getAllUserList: async (req, res) => {
     try {
       const users = await User.find().select("-password").lean();
-      return res.json(users);
+      return res.status(200).json(users);
     } catch (error) {
       return res.status(400).json({ message: error.message });
+    }
+  },
+  /** 取得使用者清單(含追蹤資料)
+   * @param searchString 搜尋字串
+   * @param userId 當前使用者userId(用來判斷是否已追蹤)
+   */
+  getUserListWithFollow: async (req, res) => {
+    const { searchString, userId } = req.query;
+    try {
+      const users = await User.find({
+        email: searchString,
+        account: searchString,
+        username: searchString,
+      })
+        .select("-password")
+        .lean();
+      if (isEmpty(users)) return res.status(404).send({ message: "User not found" });
+
+      const followList = await FollowShip.findOne({ user: userId })
+        .populate("following", {
+          _id: 1,
+          account: 1,
+          name: 1,
+          avatar: 1,
+          bgColor: 1,
+        })
+        .lean()
+        .exec();
+
+      if (isEmpty(followList)) return res.status(200).json(users); // 沒有followList 直接回傳user list data
+
+      res.status(200).json(followList);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   },
   /** 取得一般使用者資料 */

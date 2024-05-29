@@ -2,7 +2,7 @@ const FollowShip = require("../models/followShip");
 
 const followController = {
   /** 取得追蹤清單 */
-  getFollowList: async (req, res) => {
+  getFollowingList: async (req, res) => {
     const { userId } = req.query;
     try {
       const followList = await FollowShip.findOne({ user: userId })
@@ -13,6 +13,18 @@ const followController = {
           avatar: 1,
           bgColor: 1,
         })
+        .lean()
+        .exec();
+      res.status(200).json(followList);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+  /** 取得粉絲清單 */
+  getFollowerList: async (req, res) => {
+    const { userId } = req.query;
+    try {
+      const followList = await FollowShip.findOne({ user: userId })
         .populate({
           path: "follower",
           populate: {
