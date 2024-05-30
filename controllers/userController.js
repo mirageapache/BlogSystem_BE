@@ -6,6 +6,7 @@ const {
   emailExisting,
   accountExisting,
 } = require("../middleware/validator/userValidation");
+const followShip = require("../models/followShip");
 
 const userController = {
   /** 取得所有使用者 */
@@ -22,31 +23,43 @@ const userController = {
    * @param userId 當前使用者userId(用來判斷是否已追蹤)
    */
   getUserListWithFollow: async (req, res) => {
-    const { searchString, userId } = req.query;
-    try {
-      const users = await User.find({
+    const { searchString, userId } = req.body;
+    console.log(searchString);
+    let variable = {};
+
+    if (!isEmpty(searchString)) {
+      variable = {
         email: searchString,
         account: searchString,
         username: searchString,
-      })
-        .select("-password")
+      };
+    }
+
+    try {
+      // 取得使用者清單
+      const users = await User.find(variable).select("-password").lean();
+      if (isEmpty(users))
+        return res.status(404).send({ message: "User not found" });
+
+      // 取得追蹤清單
+      const follows = await followShip
+        .findOne({ user: userId })
+        .select("following")
         .lean();
-      if (isEmpty(users)) return res.status(404).send({ message: "User not found" });
+      if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList 直接回傳user list data
 
-      const followList = await FollowShip.findOne({ user: userId })
-        .populate("following", {
-          _id: 1,
-          account: 1,
-          name: 1,
-          avatar: 1,
-          bgColor: 1,
-        })
-        .lean()
-        .exec();
+      // 轉換 newObject to String
+      let FollowingList = follows.following.map((obj) => obj.toString());
 
-      if (isEmpty(followList)) return res.status(200).json(users); // 沒有followList 直接回傳user list data
+      // 執行maping，新增是否已追踨欄位
+      const userFollowList = users.map((user) => {
+        return {
+          ...user,
+          isFollow: FollowingList.includes(user._id.toString()),
+        };
+      });
 
-      res.status(200).json(followList);
+      res.status(200).json(userFollowList);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

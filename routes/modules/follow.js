@@ -9,9 +9,6 @@ router.get("/following", followController.getFollowingList);
 /** 取得粉絲清單 */
 router.get("/follower", followController.getFollowerList);
 
-/** 取得使用者清單(含追踨資料) */
-router.get("/users", followController.getUserList);
-
 /** 追蹤/取消追蹤其他使用者 */
 router.patch(
   "/followAction",

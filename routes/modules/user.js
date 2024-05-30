@@ -12,7 +12,7 @@ const {
 router.get("/", userController.getAllUserList);
 
 /** 取得使用者清單(含追蹤資料) */
-router.get("/userList", userController.getUserListWithFollow);
+router.get("/userFollowList", userController.getUserListWithFollow);
 
 /** 取得一般使用者資料 */
 router.post("/:id", userController.getOtherUserData);
