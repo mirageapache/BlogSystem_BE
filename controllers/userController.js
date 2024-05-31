@@ -24,14 +24,16 @@ const userController = {
    */
   getUserListWithFollow: async (req, res) => {
     const { searchString, userId } = req.body;
-    console.log(searchString);
     let variable = {};
 
     if (!isEmpty(searchString)) {
+      // $or 是mongoose的搜尋條件語法
       variable = {
-        email: searchString,
-        account: searchString,
-        username: searchString,
+        $or: [
+          { email: searchString },
+          { account: searchString },
+          { username: searchString },
+        ]
       };
     }
 
