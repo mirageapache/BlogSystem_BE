@@ -3,9 +3,9 @@ const FollowShip = require("../models/followShip");
 const followController = {
   /** 取得追蹤清單 */
   getFollowingList: async (req, res) => {
-    const { userId } = req.query;
+    const { userId } = req.body;
     try {
-      const followList = await FollowShip.findOne({ user: userId })
+      const followList = await FollowShip.findOne({ user: userId }).select("following")
         .populate("following", {
           _id: 1,
           account: 1,
@@ -22,9 +22,9 @@ const followController = {
   },
   /** 取得粉絲清單 */
   getFollowerList: async (req, res) => {
-    const { userId } = req.query;
+    const { userId } = req.body;
     try {
-      const followList = await FollowShip.findOne({ user: userId })
+      const followList = await FollowShip.findOne({ user: userId }).select("follower")
         .populate({
           path: "follower",
           populate: {

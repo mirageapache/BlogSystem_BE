@@ -8,22 +8,23 @@ const postController = {
         .populate("author")
         .populate("comments.author")
         .lean();
-      res.json(posts);
+      res.status(200).json(posts);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
   },
   /** 取得特定貼文 */
   getPostDetail: async (req, res) => {
+    console.log(req.body);
     try {
-      const post = await Post.findById(req.params.id)
+      const post = await Post.findById(req.body.id)
         .populate("author")
         .populate("comments.author")
         .lean();
-      if (!post) 
+      if (!post)
         return res.status(404).json({ message: "Post not found" });
 
-      res.json(post);
+      res.status(200).json(post);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -31,6 +32,7 @@ const postController = {
   /** 新增貼文 */
   createPost: async (req, res) => {
     const { author, title, content, image, status, subject, hashTags } = req.body;
+    console.log(req.body);
     
     try {
       const newPost = await Post.create({
@@ -41,11 +43,9 @@ const postController = {
         status,
         subject,
         hashTags,
-        createdAt: new Date(),
-        likedByUsers: [],
-        comments: [],
       });
-      res.status(201).json(newPost);
+      console.log(newPost);
+      res.status(200).json(newPost);
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
@@ -55,11 +55,10 @@ const postController = {
   updatePost: async (req, res) => {
     try {
       const upadtedPost = await Post.findByIdAndUpdate(
-        req.params.id,
         req.body,
         { new: true }
       ).lean();
-      res.json(upadtedPost);
+      res.status(200).json(upadtedPost);
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
@@ -68,8 +67,8 @@ const postController = {
   /** 刪除貼文 */
   deletePost: async (req, res) => {
     try {
-      await Post.findByIdAndDelete(req.params.id);
-      res.json({ message: "Post deleted successfully" });
+      await Post.findByIdAndDelete(req.body.id);
+      res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }

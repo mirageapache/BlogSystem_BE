@@ -8,7 +8,7 @@ const articleController = {
         .populate("author")
         .populate("comments.author")
         .lean();
-      res.json(articles);
+      res.status(200).json(articles);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -23,7 +23,7 @@ const articleController = {
       if (!article) {
         return res.status(404).json({ message: "Article not found" });
       }
-      res.json(article);
+      res.status(200).json(article);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -43,7 +43,7 @@ const articleController = {
         likedByUsers: [],
         comments: [],
       });
-      res.status(201).json(newArticle);
+      res.status(200).json(newArticle);
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
@@ -57,7 +57,7 @@ const articleController = {
         req.body,
         { new: true }
       ).lean();
-      res.json(updatedArticle);
+      res.status(200).json(updatedArticle);
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
@@ -67,7 +67,7 @@ const articleController = {
   deleteArticle: async (req, res) => {
     try {
       await Article.findByIdAndDelete(req.params.id);
-      res.json({ message: "Article deleted successfully" });
+      res.status(200).json({ message: "Article deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }

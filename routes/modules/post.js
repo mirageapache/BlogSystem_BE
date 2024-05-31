@@ -3,10 +3,10 @@ const router = express.Router();
 const postController = require('../../controllers/postController');
 
 /** 取得所有貼文 */
-router.get('/', postController.getAllPost);
+router.get('/all', postController.getAllPost);
 
 /** 取得特定貼文 */
-router.get('/:id', postController.getPostDetail);
+router.post('/detail', postController.getPostDetail);
 
 /** 新增貼文 */
 router.post('/create', postController.createPost);

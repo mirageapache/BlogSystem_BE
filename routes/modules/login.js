@@ -18,6 +18,6 @@ router.post("/signin", [validateEmail, validatePassword], loginController.signIn
 router.post("/auth", authorization, loginController.checkAuth);
 
 /** 密碼加密 */
-router.get("/hashPwd", loginController.passwordEncode);
+router.post("/hashPwd", loginController.passwordEncode);
 
 module.exports = router;

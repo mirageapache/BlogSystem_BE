@@ -7,7 +7,7 @@ const articleController = require('../../controllers/articleController');
 router.get('/', articleController.getAllArticle);
 
 /** 取得特定文章 */
-router.get('/:id', articleController.getArticleDetail);
+router.post('/:id', articleController.getArticleDetail);
 
 /** 新增文章 */
 router.post('/create', articleController.createArticle);
