@@ -1,9 +1,8 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-// const { v4: uuidv4 } = require("uuid");
 
-/** 文章 Article Schema */
-const ArticleSchema = new Schema({
+/** 貼文 Post Schema */
+const PostSchema = new Schema({
   /** 作者 */
   author: {
     type: mongoose.Schema.Types.ObjectId,
@@ -13,19 +12,19 @@ const ArticleSchema = new Schema({
   /** 標題 */
   title: {
     type: String,
-    requried: true,
+    required: true,
   },
   /** 內容 */
   content: {
     type: String,
     required: true,
   },
-  /** 封面圖片 */
-  coverImage: {
+  /** 圖片 */
+  image: {
     type: String,
   },
   /** 狀態
-   * [0-草稿(已儲存) / 1-發佈(公開) / 2-發佈(限閱) / 3-下架]
+   * [0-草稿(已儲存) / 1-發佈(公開) / 2-發佈(限閱) / 3-下架(隱藏)]
    * 註：公開-所有使用者均可閱讀；限閱-進階使用者可完整閱讀，一般使用者僅可閱讀部分內容
    */
   status: {
@@ -60,7 +59,7 @@ const ArticleSchema = new Schema({
     type: Date,
     default: Date.now,
   },
-  /** 喜歡的讀者id */
+  /** 喜歡的讀者 */
   likedByUsers: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "User",
@@ -71,7 +70,7 @@ const ArticleSchema = new Schema({
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Comment",
     default: [],
-  },
-});
+  }
+})
 
-module.exports = mongoose.model("Article", ArticleSchema);
+module.exports = mongoose.model("Post", PostSchema);
