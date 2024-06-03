@@ -5,22 +5,37 @@ const postController = {
    getAllPost: async (req, res) => {
     try {
       const posts = await Post.find()
-        .populate("author")
-        .populate("comments.author")
-        .lean();
+      .populate("author", {
+        _id: 1,
+        account: 1,
+        name: 1,
+        avatar: 1,
+        bgColor: 1,
+      })
+      .populate("comments.author")
+      .lean()
+      .exec();
       res.status(200).json(posts);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
   },
+
   /** 取得特定貼文 */
   getPostDetail: async (req, res) => {
-    console.log(req.body);
+    const { postId } = req.body;
     try {
-      const post = await Post.findById(req.body.id)
-        .populate("author")
+      const post = await Post.findById(postId)
+        .populate("author", {
+          _id: 1,
+          account: 1,
+          name: 1,
+          avatar: 1,
+          bgColor: 1,
+        })
         .populate("comments.author")
-        .lean();
+        .lean()
+        .exec();
       if (!post)
         return res.status(404).json({ message: "Post not found" });
 
@@ -29,6 +44,7 @@ const postController = {
       res.status(500).json({ message: error.message });
     }
   },
+
   /** 新增貼文 */
   createPost: async (req, res) => {
     const { author, title, content, image, status, subject, hashTags } = req.body;
@@ -52,9 +68,12 @@ const postController = {
 
   /** 更新貼文 */
   updatePost: async (req, res) => {
+    const {postId, title, content, image, status, subject, hashTags } = req.body;
+
     try {
       const upadtedPost = await Post.findByIdAndUpdate(
-        req.body,
+        postId,
+        { title, content, image, status, subject, hashTags, editedAt: new Date() },
         { new: true }
       ).lean();
       res.status(200).json(upadtedPost);
@@ -70,6 +89,41 @@ const postController = {
       res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  },
+  
+  /** 喜歡/取消喜歡貼文
+   * @param postId 貼文Id
+   * @param userId 使用者Id
+   * @param action 'like' / 'unlike'
+   */
+  handleLikePost: async (req, res) => {
+    const { postId, userId, action } = req.body;
+
+    try {
+      const postData = await Post.findById(postId);
+      const likeList = postData.likedByUsers;
+      let newLikeList = likeList.map((obj) => obj.toString());
+
+      if (action === "like") {
+        // like action
+        if(newLikeList.includes(userId)) newLikeList.push(userId);
+      } else {
+        // unlike action
+        const rmIndex = newLikeList.indexOf(userId);
+        if (rmIndex !== -1) newLikeList.splice(rmIndex, 1);
+      }
+
+      // 回寫至DB
+      const updateResult = await Post.findByIdAndUpdate(
+        postId,
+        { likedByUsers: newLikeList },
+        { new: true }
+      );
+
+      return res.status(200).json({ message: "succeess", updateResult});
+    } catch (error) {
+      return res.status(400).json({message: error.message});
     }
   },
 

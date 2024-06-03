@@ -6,7 +6,8 @@ const Schema = mongoose.Schema;
 const ArticleSchema = new Schema({
   /** 作者 */
   author: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
     required: true,
   },
   /** 標題 */
@@ -59,12 +60,14 @@ const ArticleSchema = new Schema({
   },
   /** 喜歡的讀者id */
   likedByUsers: {
-    type: [String],
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "User",
     default: [],
   },
   /** 留言串 */
   comments: {
-    type: [String],
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Comment",
     default: [],
   },
 });

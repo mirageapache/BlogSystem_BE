@@ -17,4 +17,7 @@ router.patch('/update', postController.updatePost);
 /** 刪除貼文 */
 router.delete('/delete', postController.deletePost);
 
+/** 喜歡/取消喜歡貼文 */
+router.patch('/like', postController.handleLikePost);
+
 module.exports = router;
