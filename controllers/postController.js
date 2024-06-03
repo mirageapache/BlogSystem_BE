@@ -1,10 +1,14 @@
 const Post = require('../models/post');
+// const moment = reqiure('moment-timezone');
+
+// const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區時間
 
 const postController = {
    /** 取得所有貼文 */
    getAllPost: async (req, res) => {
     try {
       const posts = await Post.find()
+      .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
       .populate("author", {
         _id: 1,
         account: 1,
@@ -68,7 +72,7 @@ const postController = {
 
   /** 更新貼文 */
   updatePost: async (req, res) => {
-    const {postId, title, content, image, status, subject, hashTags } = req.body;
+    const { postId, title, content, image, status, subject, hashTags } = req.body;
 
     try {
       const upadtedPost = await Post.findByIdAndUpdate(
@@ -107,7 +111,7 @@ const postController = {
 
       if (action === "like") {
         // like action
-        if(newLikeList.includes(userId)) newLikeList.push(userId);
+        if(!newLikeList.includes(userId)) newLikeList.push(userId);
       } else {
         // unlike action
         const rmIndex = newLikeList.indexOf(userId);
