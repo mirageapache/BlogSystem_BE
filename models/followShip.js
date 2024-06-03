@@ -19,7 +19,7 @@ const FollowShipSchema = new Schema({
   },
   /** 粉絲清單
    * 其他使用者追蹤自己
-   * state為訂閱狀態 state為訂閱狀態 [0-追蹤(不主動推播) / 1-主動推播]
+   * state為訂閱狀態 [0-追蹤(不主動推播) / 1-主動推播]
    */
   follower: {
     type: [

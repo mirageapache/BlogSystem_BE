@@ -56,7 +56,7 @@ const loginController = {
         follower: [],
       });
       // 初始化User設定
-      const usersetting = await UserSetting.create({
+      const setting = await UserSetting.create({
         user: user._id,
         language: "zh",
         theme: 0,
@@ -129,7 +129,7 @@ const loginController = {
   /** 密碼加密(測試用) */
   passwordEncode: async (req, res) => {
     const password = req.body.password;
-    const hashedPwd = hashSync(password, process.env.SALT_ROUNDS);
+    const hashedPwd = bcrypt.hashSync(password, process.env.SALT_ROUNDS);
     res.status(200).json({ hashedPwd });
   },
 };

@@ -32,7 +32,6 @@ const postController = {
   /** 新增貼文 */
   createPost: async (req, res) => {
     const { author, title, content, image, status, subject, hashTags } = req.body;
-    console.log(req.body);
     
     try {
       const newPost = await Post.create({
@@ -43,8 +42,8 @@ const postController = {
         status,
         subject,
         hashTags,
+        createdAt: new Date(),
       });
-      console.log(newPost);
       res.status(200).json(newPost);
     } catch (error) {
       res.status(400).json({ message: error.message });

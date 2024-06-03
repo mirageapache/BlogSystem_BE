@@ -52,12 +52,10 @@ const ArticleSchema = new Schema({
   /** 建立日期時間 */
   createdAt: {
     type: Date,
-    default: Date.now,
   },
   /** 修改日期時間 */
   editedAt: {
     type: Date,
-    default: Date.now,
   },
   /** 喜歡的讀者id */
   likedByUsers: {
