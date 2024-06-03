@@ -1,24 +1,24 @@
-const Post = require('../models/post');
-// const moment = reqiure('moment-timezone');
+const Post = require("../models/post");
+const moment = require("moment-timezone");
 
-// const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區時間
+const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區時間
 
 const postController = {
-   /** 取得所有貼文 */
-   getAllPost: async (req, res) => {
+  /** 取得所有貼文 */
+  getAllPost: async (req, res) => {
     try {
       const posts = await Post.find()
-      .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
-      .populate("author", {
-        _id: 1,
-        account: 1,
-        name: 1,
-        avatar: 1,
-        bgColor: 1,
-      })
-      .populate("comments.author")
-      .lean()
-      .exec();
+        .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
+        .populate("author", {
+          _id: 1,
+          account: 1,
+          name: 1,
+          avatar: 1,
+          bgColor: 1,
+        })
+        .populate("comments.author")
+        .lean()
+        .exec();
       res.status(200).json(posts);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -40,8 +40,7 @@ const postController = {
         .populate("comments.author")
         .lean()
         .exec();
-      if (!post)
-        return res.status(404).json({ message: "Post not found" });
+      if (!post) return res.status(404).json({ message: "Post not found" });
 
       res.status(200).json(post);
     } catch (error) {
@@ -51,8 +50,9 @@ const postController = {
 
   /** 新增貼文 */
   createPost: async (req, res) => {
-    const { author, title, content, image, status, subject, hashTags } = req.body;
-    
+    const { author, title, content, image, status, subject, hashTags } =
+      req.body;
+
     try {
       const newPost = await Post.create({
         author,
@@ -62,7 +62,7 @@ const postController = {
         status,
         subject,
         hashTags,
-        createdAt: new Date(),
+        createdAt: localTime,
       });
       res.status(200).json(newPost);
     } catch (error) {
@@ -72,12 +72,21 @@ const postController = {
 
   /** 更新貼文 */
   updatePost: async (req, res) => {
-    const { postId, title, content, image, status, subject, hashTags } = req.body;
+    const { postId, title, content, image, status, subject, hashTags } =
+      req.body;
 
     try {
       const upadtedPost = await Post.findByIdAndUpdate(
         postId,
-        { title, content, image, status, subject, hashTags, editedAt: new Date() },
+        {
+          title,
+          content,
+          image,
+          status,
+          subject,
+          hashTags,
+          editedAt: localTime,
+        },
         { new: true }
       ).lean();
       res.status(200).json(upadtedPost);
@@ -95,7 +104,7 @@ const postController = {
       res.status(500).json({ message: error.message });
     }
   },
-  
+
   /** 喜歡/取消喜歡貼文
    * @param postId 貼文Id
    * @param userId 使用者Id
@@ -111,7 +120,7 @@ const postController = {
 
       if (action === "like") {
         // like action
-        if(!newLikeList.includes(userId)) newLikeList.push(userId);
+        if (!newLikeList.includes(userId)) newLikeList.push(userId);
       } else {
         // unlike action
         const rmIndex = newLikeList.indexOf(userId);
@@ -125,12 +134,11 @@ const postController = {
         { new: true }
       );
 
-      return res.status(200).json({ message: "succeess", updateResult});
+      return res.status(200).json({ message: "succeess", updateResult });
     } catch (error) {
-      return res.status(400).json({message: error.message});
+      return res.status(400).json({ message: error.message });
     }
   },
-
-}
+};
 
 module.exports = postController;

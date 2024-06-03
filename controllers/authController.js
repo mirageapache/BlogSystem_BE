@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const moment = require("moment-timezone");
 const { get } = require("lodash");
 const { validationResult } = require("express-validator");
 // --- modals ---
@@ -36,6 +37,7 @@ const loginController = {
 
       const salt = Number.parseInt(process.env.SALT_ROUNDS);
       const hashedPwd = bcrypt.hashSync(password, salt);
+      const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區時間
 
       // 建立User資料
       const user = await User.create({
@@ -46,7 +48,7 @@ const loginController = {
         avatar: "",
         bgColor: getRandomColor(),
         userRole: 0,
-        createdAt: new Date(),
+        createdAt: localTime,
         status: 0,
       });
       // 初始化User追蹤資料

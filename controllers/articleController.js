@@ -1,3 +1,5 @@
+const moment = require("moment-timezone");
+const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區時間
 const Article = require("../models/article");
 
 const articleController = {
@@ -39,7 +41,7 @@ const articleController = {
         status: 0,
         subject,
         tags,
-        createdAt: new Date(),
+        createdAt: localTime,
         likedByUsers: [],
         comments: [],
       });
