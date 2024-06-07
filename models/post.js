@@ -9,11 +9,6 @@ const PostSchema = new Schema({
     ref: "User",
     required: true,
   },
-  /** 標題 */
-  title: {
-    type: String,
-    required: true,
-  },
   /** 內容 */
   content: {
     type: String,

@@ -50,13 +50,12 @@ const postController = {
 
   /** 新增貼文 */
   createPost: async (req, res) => {
-    const { author, title, content, image, status, subject, hashTags } =
+    const { author, content, image, status, subject, hashTags } =
       req.body;
 
     try {
       const newPost = await Post.create({
         author,
-        title,
         content,
         image,
         status,
@@ -72,14 +71,13 @@ const postController = {
 
   /** 更新貼文 */
   updatePost: async (req, res) => {
-    const { postId, title, content, image, status, subject, hashTags } =
+    const { postId, content, image, status, subject, hashTags } =
       req.body;
 
     try {
       const upadtedPost = await Post.findByIdAndUpdate(
         postId,
         {
-          title,
           content,
           image,
           status,
