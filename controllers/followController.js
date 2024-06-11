@@ -1,3 +1,4 @@
+const { isEmpty } = require("lodash");
 const FollowShip = require("../models/followShip");
 
 const followController = {
@@ -5,7 +6,8 @@ const followController = {
   getFollowingList: async (req, res) => {
     const { userId } = req.body;
     try {
-      const followList = await FollowShip.findOne({ user: userId }).select("following")
+      const followList = await FollowShip.findOne({ user: userId })
+        .select("following")
         .populate("following", {
           _id: 1,
           account: 1,
@@ -24,7 +26,8 @@ const followController = {
   getFollowerList: async (req, res) => {
     const { userId } = req.body;
     try {
-      const followList = await FollowShip.findOne({ user: userId }).select("follower")
+      const followList = await FollowShip.findOne({ user: userId })
+        .select("follower")
         .populate({
           path: "follower",
           populate: {
@@ -55,7 +58,10 @@ const followController = {
       if (!targetUser)
         return res.status(404).json({ message: "找不到該使用者" });
       let newFollowings = currentUser.following.map((obj) => obj.toString()); // following => 自己的追蹤名單
-      let newFollowers = targetUser.follower.map((obj) => obj.user.toString()); // follower => 目標使用者的粉絲名單
+      let newFollowers = targetUser.follower.map((obj) => {
+        if (!isEmpty(obj))
+          action === "follow" ? obj.toString() : obj._id.toString();
+      }); // follower => 目標使用者的粉絲名單
 
       if (action === "follow") {
         // follow action
@@ -89,6 +95,7 @@ const followController = {
         follower: followerRes,
       });
     } catch (error) {
+      console.log(error);
       return res.status(400).json({ message: error.message });
     }
   },
@@ -105,7 +112,7 @@ const followController = {
       const targetUser = await FollowShip.findOne({ user: targetId }).lean(); // select 目標使用者
       let newFollowers = targetUser.follower;
       newFollowers.map((item) => {
-        if (item.userId === currentId) item.state = followState;
+        if (item._id === currentId) item.state = followState;
       });
       const followList = await FollowShip.findOneAndUpdate(
         { user: targetId },

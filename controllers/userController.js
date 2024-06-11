@@ -33,7 +33,7 @@ const userController = {
           { email: searchString },
           { account: searchString },
           { username: searchString },
-        ]
+        ],
       };
     }
 
@@ -52,16 +52,23 @@ const userController = {
 
       // 轉換 newObject to String
       let FollowingList = follows.following.map((obj) => obj.toString());
+      console.log(follows);
 
       // 執行maping，新增是否已追踨欄位
       const userFollowList = users.map((user) => {
+        const isFollow = FollowingList.includes(user._id.toString()); // 判斷是否在追蹤清單內
+        // let followState;
+        // if (isFollow) {
+        
+        // }
+
         return {
           ...user,
-          isFollow: FollowingList.includes(user._id.toString()),
+          isFollow,
         };
       });
 
-      res.status(200).json(userFollowList);
+      res.status(200).json({userFollowList, FollowingList});
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
