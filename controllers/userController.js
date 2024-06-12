@@ -6,7 +6,7 @@ const {
   emailExisting,
   accountExisting,
 } = require("../middleware/validator/userValidation");
-const followShip = require("../models/followShip");
+const Follow = require("../models/follow");
 
 const userController = {
   /** 取得所有使用者 */
@@ -44,7 +44,7 @@ const userController = {
         return res.status(404).send({ message: "User not found" });
 
       // 取得追蹤清單
-      const follows = await followShip
+      const follows = await Follow
         .findOne({ user: userId })
         .select("following")
         .lean();
@@ -59,7 +59,7 @@ const userController = {
         const isFollow = FollowingList.includes(user._id.toString()); // 判斷是否在追蹤清單內
         // let followState;
         // if (isFollow) {
-        
+
         // }
 
         return {
@@ -68,7 +68,7 @@ const userController = {
         };
       });
 
-      res.status(200).json({userFollowList, FollowingList});
+      res.status(200).json({ userFollowList, FollowingList });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

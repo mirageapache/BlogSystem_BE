@@ -51,6 +51,16 @@ const UserSchema = new Schema({
     type: Number,
     default: 0,
   },
+  /** 追蹤清單 */
+  following: [{
+    type: Schema.Types.ObjectId,
+    ref: "User",
+  }],
+  /** 粉絲清單 */
+  follower: [{
+    type: Schema.Types.ObjectId,
+    ref: "User",
+  }],
 });
 
 module.exports = mongoose.model("User", UserSchema);

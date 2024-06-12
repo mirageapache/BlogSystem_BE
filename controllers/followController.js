@@ -1,12 +1,12 @@
 const { isEmpty } = require("lodash");
-const FollowShip = require("../models/followShip");
+const Follow = require("../models/follow");
 
 const followController = {
   /** 取得追蹤清單 */
   getFollowingList: async (req, res) => {
     const { userId } = req.body;
     try {
-      const followList = await FollowShip.findOne({ user: userId })
+      const followList = await Follow.findOne({ user: userId })
         .select("following")
         .populate("following", {
           _id: 1,
@@ -26,7 +26,7 @@ const followController = {
   getFollowerList: async (req, res) => {
     const { userId } = req.body;
     try {
-      const followList = await FollowShip.findOne({ user: userId })
+      const followList = await Follow.findOne({ user: userId })
         .select("follower")
         .populate({
           path: "follower",
@@ -53,8 +53,8 @@ const followController = {
     const currentId = userId;
 
     try {
-      const targetUser = await FollowShip.findOne({ user: targetId }).lean(); // select 目標使用者
-      const currentUser = await FollowShip.findOne({ user: currentId }).lean(); // select 操作使用者
+      const targetUser = await Follow.findOne({ user: targetId }).lean(); // select 目標使用者
+      const currentUser = await Follow.findOne({ user: currentId }).lean(); // select 操作使用者
       if (!targetUser)
         return res.status(404).json({ message: "找不到該使用者" });
       let newFollowings = currentUser.following.map((obj) => {
@@ -81,12 +81,12 @@ const followController = {
       }
 
       // 回寫至DB
-      const followingRes = await FollowShip.findOneAndUpdate(
+      const followingRes = await Follow.findOneAndUpdate(
         { user: currentId },
         { following: newFollowings },
         { new: true }
       );
-      const followerRes = await FollowShip.findOneAndUpdate(
+      const followerRes = await Follow.findOneAndUpdate(
         { user: targetId },
         { follower: newFollowers },
         { new: true }
@@ -112,12 +112,12 @@ const followController = {
     const currentId = userId;
 
     try {
-      const targetUser = await FollowShip.findOne({ user: targetId }).lean(); // select 目標使用者
+      const targetUser = await Follow.findOne({ user: targetId }).lean(); // select 目標使用者
       let newFollowers = targetUser.follower;
       newFollowers.map((item) => {
         if (item._id === currentId) item.state = followState;
       });
-      const followList = await FollowShip.findOneAndUpdate(
+      const followList = await Follow.findOneAndUpdate(
         { user: targetId },
         { follower: newFollowers },
         { new: true }
