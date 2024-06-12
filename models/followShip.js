@@ -14,8 +14,18 @@ const FollowShipSchema = new Schema({
    *
    */
   following: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: "User",
+    type: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        state: {
+          type: Number,
+          default: 1,
+        },
+      },
+    ],
   },
   /** 粉絲清單
    * 其他使用者追蹤自己

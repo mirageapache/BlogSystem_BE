@@ -57,7 +57,10 @@ const followController = {
       const currentUser = await FollowShip.findOne({ user: currentId }).lean(); // select 操作使用者
       if (!targetUser)
         return res.status(404).json({ message: "找不到該使用者" });
-      let newFollowings = currentUser.following.map((obj) => obj.toString()); // following => 自己的追蹤名單
+      let newFollowings = currentUser.following.map((obj) => {
+        if (!isEmpty(obj))
+          action === "follow" ? obj.toString() : obj._id.toString();
+      }); // following => 自己的追蹤名單
       let newFollowers = targetUser.follower.map((obj) => {
         if (!isEmpty(obj))
           action === "follow" ? obj.toString() : obj._id.toString();
@@ -66,7 +69,7 @@ const followController = {
       if (action === "follow") {
         // follow action
         if (!newFollowings.includes(targetId)) {
-          newFollowings.push(targetId);
+          newFollowings.push({ userId: targetId, state: 0 });
           newFollowers.push({ userId: currentId, state: 0 });
         }
       } else {
