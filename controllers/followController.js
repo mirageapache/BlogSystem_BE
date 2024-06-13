@@ -1,4 +1,5 @@
 const { isEmpty } = require("lodash");
+const User = require("../models/user");
 const Follow = require("../models/follow");
 
 const followController = {
@@ -6,7 +7,7 @@ const followController = {
   getFollowingList: async (req, res) => {
     const { userId } = req.body;
     try {
-      const followList = await Follow.findOne({ user: userId })
+      const followList = await User.findOne({ user: userId })
         .select("following")
         .populate("following", {
           _id: 1,
@@ -26,7 +27,7 @@ const followController = {
   getFollowerList: async (req, res) => {
     const { userId } = req.body;
     try {
-      const followList = await Follow.findOne({ user: userId })
+      const followList = await User.findOne({ user: userId })
         .select("follower")
         .populate({
           path: "follower",
@@ -48,58 +49,122 @@ const followController = {
    * @param targetId 被新增追縱/取消追蹤的使用者id
    * @param followState 追蹤狀態
    */
-  handleFollowAction: async (req, res) => {
-    const { action, userId, targetId } = req.body;
-    const currentId = userId;
+  // handleFollowAction: async (req, res) => {
+  //   const { action, userId, targetId } = req.body;
+  //   const currentId = userId;
 
+  //   try {
+  //     const targetUser = await Follow.findOne({ user: targetId }).lean(); // select 目標使用者
+  //     const currentUser = await Follow.findOne({ user: currentId }).lean(); // select 操作使用者
+  //     if (!targetUser)
+  //       return res.status(404).json({ message: "找不到該使用者" });
+  //     let newFollowings = currentUser.following.map((obj) => {
+  //       if (!isEmpty(obj))
+  //         action === "follow" ? obj.toString() : obj._id.toString();
+  //     }); // following => 自己的追蹤名單
+  //     let newFollowers = targetUser.follower.map((obj) => {
+  //       if (!isEmpty(obj))
+  //         action === "follow" ? obj.toString() : obj._id.toString();
+  //     }); // follower => 目標使用者的粉絲名單
+
+  //     if (action === "follow") {
+  //       // follow action
+  //       if (!newFollowings.includes(targetId)) {
+  //         newFollowings.push({ userId: targetId, state: 0 });
+  //         newFollowers.push({ userId: currentId, state: 0 });
+  //       }
+  //     } else {
+  //       // unfollow action
+  //       const rmFollowingIndex = newFollowings.indexOf(targetId);
+  //       if (rmFollowingIndex !== -1) newFollowings.splice(rmFollowingIndex, 1);
+  //       const rmFollowerIndex = newFollowers.indexOf(currentId);
+  //       if (rmFollowerIndex !== -1) newFollowers.splice(rmFollowerIndex, 1);
+  //     }
+
+  //     // 回寫至DB
+  //     const followingRes = await Follow.findOneAndUpdate(
+  //       { user: currentId },
+  //       { following: newFollowings },
+  //       { new: true }
+  //     );
+  //     const followerRes = await Follow.findOneAndUpdate(
+  //       { user: targetId },
+  //       { follower: newFollowers },
+  //       { new: true }
+  //     );
+
+  //     return res.status(200).json({
+  //       message: "success",
+  //       following: followingRes,
+  //       follower: followerRes,
+  //     });
+  //   } catch (error) {
+  //     console.log(error);
+  //     return res.status(400).json({ message: error.message });
+  //   }
+  // },
+  /** 追蹤 */
+  followUser: async (req, res) => {
+    const { followerId, followingId } = req.body;
+    const session = await mongoose.startSession(); // 建立session可保持資料一致性
+    session.startTransaction();
     try {
-      const targetUser = await Follow.findOne({ user: targetId }).lean(); // select 目標使用者
-      const currentUser = await Follow.findOne({ user: currentId }).lean(); // select 操作使用者
-      if (!targetUser)
-        return res.status(404).json({ message: "找不到該使用者" });
-      let newFollowings = currentUser.following.map((obj) => {
-        if (!isEmpty(obj))
-          action === "follow" ? obj.toString() : obj._id.toString();
-      }); // following => 自己的追蹤名單
-      let newFollowers = targetUser.follower.map((obj) => {
-        if (!isEmpty(obj))
-          action === "follow" ? obj.toString() : obj._id.toString();
-      }); // follower => 目標使用者的粉絲名單
-
-      if (action === "follow") {
-        // follow action
-        if (!newFollowings.includes(targetId)) {
-          newFollowings.push({ userId: targetId, state: 0 });
-          newFollowers.push({ userId: currentId, state: 0 });
-        }
-      } else {
-        // unfollow action
-        const rmFollowingIndex = newFollowings.indexOf(targetId);
-        if (rmFollowingIndex !== -1) newFollowings.splice(rmFollowingIndex, 1);
-        const rmFollowerIndex = newFollowers.indexOf(currentId);
-        if (rmFollowerIndex !== -1) newFollowers.splice(rmFollowerIndex, 1);
-      }
-
-      // 回寫至DB
-      const followingRes = await Follow.findOneAndUpdate(
-        { user: currentId },
-        { following: newFollowings },
-        { new: true }
-      );
-      const followerRes = await Follow.findOneAndUpdate(
-        { user: targetId },
-        { follower: newFollowers },
-        { new: true }
+      await Follow.create(
+        { follower: followerId, following: followingId },
+        { session }
       );
 
-      return res.status(200).json({
-        message: "success",
-        following: followingRes,
-        follower: followerRes,
-      });
-    } catch (error) {
-      console.log(error);
-      return res.status(400).json({ message: error.message });
+      await User.findByIdAndUpdate(
+        followerId,
+        { $addToSet: { following: followingId } },
+        { session }
+      );
+      await User.findByIdAndUpdate(
+        followingId,
+        { $addToSet: { followers: followerId } },
+        { session }
+      );
+
+      await session.commitTransaction(); // 提交事務
+      return res.status(200).json({ message: "follow success" });
+    } catch (err) {
+      await session.abortTransaction(); // 回滾事務
+      console.error("追蹤失敗:", err.message);
+      return res.status(400).json({ message: err.message });
+    } finally {
+      session.endSession(); // 結束會話
+    }
+  },
+  /** 取消追蹤 */
+  unfollowUser: async (req, res) => {
+    const { followerId, followingId } = req.body;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      await Follow.findOneAndDelete(
+        { follower: followerId, following: followingId },
+        { session }
+      );
+
+      await User.findByIdAndUpdate(
+        followerId,
+        { $pull: { following: followingId } },
+        { session }
+      );
+      await User.findByIdAndUpdate(
+        followingId,
+        { $pull: { followers: followerId } },
+        { session }
+      );
+
+      await session.commitTransaction(); // 提交事務
+      return res.status(200).json({ message: "unfollow success" });
+    } catch (err) {
+      await session.abortTransaction(); // 回滾事務
+      console.error("取消追蹤失敗:", err.message);
+      return res.status(400).json({ message: err.message });
+    } finally {
+      session.endSession(); // 結束會話
     }
   },
   /** 更新訂閱狀態

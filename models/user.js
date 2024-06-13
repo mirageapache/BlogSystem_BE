@@ -53,12 +53,12 @@ const UserSchema = new Schema({
   },
   /** 追蹤清單 */
   following: [{
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   }],
   /** 粉絲清單 */
   follower: [{
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   }],
 });
