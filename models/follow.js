@@ -3,13 +3,13 @@ const Schema = mongoose.Schema;
 
 /** 追蹤 Follow Ship Schema */
 const FollowShipSchema = new Schema({
-  /** 追蹤清單(自己追蹤其他使用者) */
-  following: {
+  /** 被追蹤人 */
+  followed: {
     type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
-  /** 粉絲清單(其他使用者追蹤自己) */
+  /** 追蹤人 */
   follower: {
     type: Schema.Types.ObjectId,
     ref: "User",

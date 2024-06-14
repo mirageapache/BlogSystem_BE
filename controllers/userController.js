@@ -18,11 +18,11 @@ const userController = {
       return res.status(400).json({ message: error.message });
     }
   },
-  /** 取得使用者清單(含追蹤資料)
+  /** 取得搜尋使用者清單(含追蹤資料)
    * @param searchString 搜尋字串
    * @param userId 當前使用者userId(用來判斷是否已追蹤)
    */
-  getUserListWithFollow: async (req, res) => {
+  getSearchUserList: async (req, res) => {
     const { searchString, userId } = req.body;
     let variable = {};
 
@@ -32,43 +32,43 @@ const userController = {
         $or: [
           { email: searchString },
           { account: searchString },
-          { username: searchString },
+          { name: searchString },
         ],
       };
     }
 
     try {
-      // 取得使用者清單
-      const users = await User.find(variable).select("-password").lean();
+      // 取得搜尋結果的使用者清單
+      const users = await User.find(variable).select("_id account name avatar bgColor").lean();
       if (isEmpty(users))
         return res.status(404).send({ message: "User not found" });
 
       // 取得追蹤清單
       const follows = await Follow
-        .findOne({ user: userId })
-        .select("following")
+        .find({ follower: userId })
+        .select("followed followState")
         .lean();
-      if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList 直接回傳user list data
+      if (isEmpty(follows)) 
+        return res.status(200).json(users); // 沒有followList 直接回傳user list data
 
-      // 轉換 newObject to String
-      let FollowingList = follows.following.map((obj) => obj.toString());
-      console.log(follows);
+      // 將追蹤清單轉換為哈希表(Object)
+      const followsMap = follows.reduce((acc, follow) => {
+        acc[follow.followed.toString()] = follow;
+        return acc;
+      }, {});
 
-      // 執行maping，新增是否已追踨欄位
+      // 執行 mapping，新增是否已追蹤、通知狀態欄位
       const userFollowList = users.map((user) => {
-        const isFollow = FollowingList.includes(user._id.toString()); // 判斷是否在追蹤清單內
-        // let followState;
-        // if (isFollow) {
+        const followData = followsMap[user._id.toString()];
 
-        // }
-
-        return {
-          ...user,
-          isFollow,
-        };
+        if (!followData) {
+          return { ...user, isFollow: false, followState: null };
+        } else {
+          return { ...user, isFollow: true, followState: followData.followState };
+        }
       });
 
-      res.status(200).json({ userFollowList, FollowingList });
+      res.status(200).json({ userFollowList });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

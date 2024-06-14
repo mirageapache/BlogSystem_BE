@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-// const { v4:uuidv4 } = require('uuid');
 const Schema = mongoose.Schema;
 
 /** 使用者 User Schema */
@@ -51,16 +50,6 @@ const UserSchema = new Schema({
     type: Number,
     default: 0,
   },
-  /** 追蹤清單 */
-  following: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  }],
-  /** 粉絲清單 */
-  follower: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  }],
 });
 
 module.exports = mongoose.model("User", UserSchema);
