@@ -39,17 +39,17 @@ const userController = {
 
     try {
       // 取得搜尋結果的使用者清單
-      const users = await User.find(variable).select("_id account name avatar bgColor").lean();
+      const users = await User.find(variable)
+        .select("_id account name avatar bgColor")
+        .lean();
       if (isEmpty(users))
         return res.status(404).send({ message: "User not found" });
 
       // 取得追蹤清單
-      const follows = await Follow
-        .find({ follower: userId })
+      const follows = await Follow.find({ follower: userId })
         .select("followed followState")
         .lean();
-      if (isEmpty(follows)) 
-        return res.status(200).json(users); // 沒有followList 直接回傳user list data
+      if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList 直接回傳user list data
 
       // 將追蹤清單轉換為哈希表(Object)
       const followsMap = follows.reduce((acc, follow) => {
@@ -64,11 +64,15 @@ const userController = {
         if (!followData) {
           return { ...user, isFollow: false, followState: null };
         } else {
-          return { ...user, isFollow: true, followState: followData.followState };
+          return {
+            ...user,
+            isFollow: true,
+            followState: followData.followState,
+          };
         }
       });
 
-      return res.status(200).json({ userFollowList });
+      return res.status(200).json(userFollowList );
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
@@ -78,25 +82,25 @@ const userController = {
    */
   getRecommendUserList: async (req, res) => {
     const { userId } = req.body;
-    
+
     try {
       // 用aggregate()進行資料集合和排序，查詢出(前10位)推薦使用者清單
       const topUser = await Follow.aggregate([
         {
           $group: {
             _id: "$followed",
-            followerCount: { $sum: 1 }
-          }
+            followerCount: { $sum: 1 },
+          },
         },
-        { $sort: { followerCount: -1 }},
+        { $sort: { followerCount: -1 } },
         { $limit: 10 },
         {
           $lookup: {
             from: "users", // 關聯的集合名稱
             localField: "_id",
             foreignField: "_id",
-            as: "userInfo"
-          }
+            as: "userInfo",
+          },
         },
         { $unwind: "$userInfo" },
         {
@@ -108,16 +112,14 @@ const userController = {
             avatar: "$userInfo.avatar",
             bgColor: "$userInfo.bgColor",
             followerCount: 1,
-          }
-        }
+          },
+        },
       ]);
 
-      if (isEmpty(userId)) 
-        return res.status(200).json({ topUser });
+      if (isEmpty(userId)) return res.status(200).json(topUser);
 
       // 查詢使用者的追蹤資料
-      const userFollowList = await Follow
-        .find({ follower: userId })
+      const userFollowList = await Follow.find({ follower: userId })
         .select("followed followState")
         .lean();
 
@@ -127,16 +129,20 @@ const userController = {
       }, {});
 
       // 合併資料，新增 isFollow和 followState欄位
-      const recommendUserList = topUser.map(user => {
+      const recommendUserList = topUser.map((user) => {
         const followData = followListMap[user.userId.toString()];
-        if(followData){
-          return { ...user, isFollow: true, followState: followData.followState };
+        if (followData) {
+          return {
+            ...user,
+            isFollow: true,
+            followState: followData.followState,
+          };
         } else {
           return { ...user, isFollow: false, followState: null };
         }
       });
 
-      return res.status(200).json({ recommendUserList });
+      return res.status(200).json(recommendUserList);
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
