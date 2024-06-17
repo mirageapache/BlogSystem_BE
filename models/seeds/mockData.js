@@ -5,7 +5,7 @@ const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區
 
 // --- Models ---
 const User = require("../user");
-const FollowShip = require("../followShip");
+const Follow = require("../follow");
 const UserSetting = require("../userSetting");
 const Article = require("../article");
 
@@ -29,7 +29,7 @@ async function initDatabase() {
       try {
         // 清除 user data
         await User.deleteMany({});
-        await FollowShip.deleteMany({});
+        await Follow.deleteMany({});
         await UserSetting.deleteMany({});
         console.log("✅ clear user data success...");
         // 建立 user data
@@ -49,7 +49,7 @@ async function initDatabase() {
           });
           userIdArray.push(newUser._id);
           // 初始化User追蹤資料
-          await FollowShip.create({
+          await Follow.create({
             user: newUser._id,
             following: [],
             follower: [],

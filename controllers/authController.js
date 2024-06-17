@@ -5,7 +5,7 @@ const { get } = require("lodash");
 const { validationResult } = require("express-validator");
 // --- modals ---
 const User = require("../models/user");
-const FollowShip = require("../models/followShip");
+const Follow = require("../models/follow");
 const UserSetting = require("../models/userSetting");
 // --- functions ---
 const { getRandomColor } = require("../middleware/commonUtils");
@@ -52,7 +52,7 @@ const loginController = {
         status: 0,
       });
       // 初始化User追蹤資料
-      const follow = await FollowShip.create({
+      const follow = await Follow.create({
         user: user._id,
         following: [],
         follower: [],

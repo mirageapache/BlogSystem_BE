@@ -11,8 +11,11 @@ const {
 /** 取得所有使用者 */
 router.get("/", userController.getAllUserList);
 
-/** 取得使用者清單(含追蹤資料) */
-router.post("/userFollowList", userController.getUserListWithFollow);
+/** 取得搜尋使用者清單(含追蹤資料) */
+router.post("/getSearchUserList", userController.getSearchUserList);
+
+/** 取得推薦使用者清單(含追蹤資料) */
+router.post("/getRecommendUserList", userController.getRecommendUserList);
 
 /** 取得一般使用者資料 */
 router.post("/:id", userController.getOtherUserData);
