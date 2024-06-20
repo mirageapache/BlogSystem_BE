@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const postController = require('../../controllers/postController');
+const { authorization } = require('../../middleware/auth');
 
 /** 取得所有貼文 */
 router.get('/all', postController.getAllPost);
@@ -9,13 +10,13 @@ router.get('/all', postController.getAllPost);
 router.post('/detail', postController.getPostDetail);
 
 /** 新增貼文 */
-router.post('/create', postController.createPost);
+router.post('/create', authorization, postController.createPost);
 
 /** 更新貼文 */
-router.patch('/update', postController.updatePost);
+router.patch('/update', authorization, postController.updatePost);
 
 /** 刪除貼文 */
-router.delete('/delete', postController.deletePost);
+router.delete('/delete', authorization, postController.deletePost);
 
 /** 喜歡/取消喜歡貼文 */
 router.patch('/like', postController.handleLikePost);

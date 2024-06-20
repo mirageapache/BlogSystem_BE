@@ -26,10 +26,6 @@ const PostSchema = new Schema({
     type: Number,
     default: 0,
   },
-  /** 主題類型 */
-  subject: {
-    type: String,
-  },
   /** 分類標籤 */
   hashTags: {
     type: [String],
