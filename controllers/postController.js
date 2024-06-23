@@ -50,11 +50,10 @@ const postController = {
 
   /** 新增貼文 */
   createPost: async (req, res) => {
-    const { author, content, image, status, hashTags } = req.body;
-
+    const { userId, content, image, status, hashTags } = req.body;
     try {
       const newPost = await Post.create({
-        author,
+        author: userId,
         content,
         image,
         status,
