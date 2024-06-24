@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const postController = require('../../controllers/postController');
+const { uploadFile } = require("../../middleware/fileUtils");
 const { authorization } = require('../../middleware/auth');
 
 /** 取得所有貼文 */
@@ -10,7 +11,7 @@ router.get('/all', postController.getAllPost);
 router.post('/detail', postController.getPostDetail);
 
 /** 新增貼文 */
-router.post('/create', authorization, postController.createPost);
+router.post('/create/:id', authorization, uploadFile.single("postImage"), postController.createPost);
 
 /** 更新貼文 */
 router.patch('/update', authorization, postController.updatePost);

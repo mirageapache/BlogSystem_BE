@@ -1,5 +1,7 @@
 const Post = require("../models/post");
 const moment = require("moment-timezone");
+const { imgurFileHandler } = require("../middleware/fileUtils");
+const { isEmpty } = require("lodash");
 
 const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區時間
 
@@ -50,14 +52,21 @@ const postController = {
 
   /** 新增貼文 */
   createPost: async (req, res) => {
-    const { userId, content, image, status, hashTags } = req.body;
+    const { author, content, postImage, status, hashTags } = req.file;
+    console.log(req.file);
+    const filePath = !isEmpty(postImage)
+      ? await imgurFileHandler(postImage)
+      : null; // imgur圖片檔網址(路徑)
+
+    console.log(filePath);
+
     try {
       const newPost = await Post.create({
-        author: userId,
+        author,
         content,
-        image,
-        status,
-        hashTags,
+        image: filePath,
+        status: parseInt(status),
+        hashTags: JSON.parse(hashTags),
         createdAt: localTime,
       });
       res.status(200).json(newPost);
