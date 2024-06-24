@@ -52,13 +52,12 @@ const postController = {
 
   /** 新增貼文 */
   createPost: async (req, res) => {
-    const { author, content, postImage, status, hashTags } = req.file;
-    console.log(req.file);
+    const { author, content, status, hashTags } = req.body;
+    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const postImage = req.file || {};
     const filePath = !isEmpty(postImage)
       ? await imgurFileHandler(postImage)
       : null; // imgur圖片檔網址(路徑)
-
-    console.log(filePath);
 
     try {
       const newPost = await Post.create({
@@ -66,7 +65,7 @@ const postController = {
         content,
         image: filePath,
         status: parseInt(status),
-        hashTags: JSON.parse(hashTags),
+        hashTags: hashTagArr,
         createdAt: localTime,
       });
       res.status(200).json(newPost);
