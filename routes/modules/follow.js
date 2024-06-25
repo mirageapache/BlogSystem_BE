@@ -4,10 +4,10 @@ const { authorization } = require("../../middleware/auth");
 const followController = require("../../controllers/followController");
 
 /** 取得追蹤清單 */
-router.post("/getfollowing", authorization, followController.getfollowingList);
+router.post("/getfollowing", followController.getfollowingList);
 
 /** 取得粉絲清單 */
-router.post("/getfollower", authorization, followController.getFollowerList);
+router.post("/getfollower", followController.getFollowerList);
 
 /** 追蹤 */
 router.post("/follow", authorization, followController.followUser);

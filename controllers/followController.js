@@ -13,7 +13,16 @@ const followController = {
         })
         .lean()
         .exec();
-      res.status(200).json(followedList);
+
+      const followListData = followedList.map((follow) => {
+        return {
+          ...follow.followed,
+          followState: follow.followState,
+          isFollow: true,
+        };
+      });
+
+      res.status(200).json(followListData);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
@@ -22,15 +31,20 @@ const followController = {
   getFollowerList: async (req, res) => {
     const { userId } = req.body;
     try {
-      const followList = await Follow.find({ followed: userId })
-        .select("follower followState")
+      const followerList = await Follow.find({ followed: userId })
+        .select("user:follower followState")
         .populate({
           path: "follower",
           select: "_id account name avatar bgColor",
         })
         .lean()
         .exec();
-      res.status(200).json(followList);
+
+      const followListData = followerList.map((follow) => {
+        return { ...follow.follower, followState: follow.followState };
+      });
+
+      res.status(200).json(followListData);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
