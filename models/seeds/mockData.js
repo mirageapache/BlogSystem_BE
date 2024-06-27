@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 if (process.env.NODE_ENV !== "production") require("dotenv").config();
 const moment = require("moment-timezone");
-const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區時間
 
 // --- Models ---
 const User = require("../user");
@@ -44,7 +43,7 @@ async function initDatabase() {
             bgColor: getRandomColor(),
             bio: `Hi, I'm ${username}`,
             userRole: 0,
-            createdAt: localTime,
+            createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
             status: 0,
           });
           userIdArray.push(newUser._id);
@@ -77,7 +76,7 @@ async function initDatabase() {
             status: 0,
             subject: articleMockData[i].subject,
             tags: ["測試"],
-            createdAt: localTime,
+            createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
             likedByUsers: [],
             comments: [],
           });

@@ -3,8 +3,6 @@ const moment = require("moment-timezone");
 const { imgurFileHandler } = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
 
-const localTime = moment.tz(new Date(), "Asia/Taipei").toDate(); // 轉換時區時間
-
 const postController = {
   /** 取得所有貼文 */
   getAllPost: async (req, res) => {
@@ -66,7 +64,7 @@ const postController = {
         image: filePath,
         status: parseInt(status),
         hashTags: hashTagArr,
-        createdAt: localTime,
+        createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),  // 轉換時區時間
       });
       res.status(200).json(newPost);
     } catch (error) {
