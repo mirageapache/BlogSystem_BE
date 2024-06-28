@@ -29,7 +29,7 @@ const postController = {
   getPostDetail: async (req, res) => {
     const { postId } = req.body;
     try {
-      const post = await Post.findById(postId)
+      const post = await Post.findOne({_id: postId})
         .populate("author", {
           _id: 1,
           account: 1,
@@ -72,19 +72,24 @@ const postController = {
     }
   },
 
-  /** 更新貼文 */
+  /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
-    const { postId, content, image, status, hashTags } = req.body;
+    const { postId, content, status, hashTags } = req.body;
+    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const postImage = req.file || {};
+    const filePath = !isEmpty(postImage)
+      ? await imgurFileHandler(postImage)
+      : null; // imgur圖片檔網址(路徑)
 
     try {
       const upadtedPost = await Post.findByIdAndUpdate(
         postId,
         {
           content,
-          image,
-          status,
-          hashTags,
-          editedAt: localTime,
+          image: filePath,
+          status: parseInt(status),
+          hashTags: hashTagArr,
+          editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
         },
         { new: true }
       ).lean();

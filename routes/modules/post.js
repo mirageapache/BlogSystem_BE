@@ -14,7 +14,7 @@ router.post('/detail', postController.getPostDetail);
 router.post('/create/:id', authorization, uploadFile.single("postImage"), postController.createPost);
 
 /** 更新貼文 */
-router.patch('/update', authorization, postController.updatePost);
+router.patch('/update', authorization, uploadFile.single("postImage"), postController.updatePost);
 
 /** 刪除貼文 */
 router.delete('/delete', authorization, postController.deletePost);
