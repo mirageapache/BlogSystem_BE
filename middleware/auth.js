@@ -10,9 +10,6 @@ const authorization = (req, res, next) => {
   const token = tokenString.split(" ")[1];
   if (!token) return res.status(401).json({ message: "No token provided" });
 
-
-  console.log(req.body);
-
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     // 參數帶在網址 => req.params / 參數包在body => req.body.param，兩個都要判斷
     if (
