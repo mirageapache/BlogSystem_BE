@@ -74,25 +74,29 @@ const postController = {
 
   /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
-    const { postId, content, status, hashTags } = req.body;
+    const { postId, content, status, hashTags, removeImage } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     const postImage = req.file || {};
     const filePath = !isEmpty(postImage)
       ? await imgurFileHandler(postImage)
       : null; // imgur圖片檔網址(路徑)
 
+    let variable = {
+      content,
+      status: parseInt(status),
+      hashTags: hashTagArr,
+      editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
+    }
+
+    if(filePath || removeImage) variable = { ...variable, image: filePath }; // filePath沒值則不更新image
+
     try {
       const upadtedPost = await Post.findByIdAndUpdate(
         postId,
-        {
-          content,
-          image: filePath,
-          status: parseInt(status),
-          hashTags: hashTagArr,
-          editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
-        },
+        variable,
         { new: true }
       ).lean();
+
       res.status(200).json(upadtedPost);
     } catch (error) {
       res.status(400).json({ message: error.message });
