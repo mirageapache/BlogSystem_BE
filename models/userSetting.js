@@ -1,13 +1,13 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const User = require("./user");
 
 /** 使用者設定 User Setting Schema */
 const UserSettingSchema = new Schema({
   /** 使用者id */
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: User,
+    select: false,
+    ref: "User",
   },
   /** 語言 */
   language: {
@@ -20,9 +20,11 @@ const UserSettingSchema = new Schema({
   },
   /**
    * 標籤 - 使用者自訂義的文章分類標籤
+   * (該欄位暫時保留，目前僅使用article的"hashTag")
    */
   tags: {
     type: [String],
+    select: false,
     defaulte: [],
   },
   /** email通知推播 */

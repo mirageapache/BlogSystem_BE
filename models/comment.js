@@ -1,19 +1,18 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const UserSchema = require("./user");
 
 /** 文章留言 Comment Schema */
 const CommentSchema = new Schema({
   /** 留言使用者 */
   author: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: UserSchema,
+    ref: "User",
     required: true,
   },
   /** 回覆給 */
   replyTo: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: UserSchema,
+    ref: "User",
   },
   /** 留言內容 */
   content: {
@@ -28,4 +27,4 @@ const CommentSchema = new Schema({
   },
 });
 
-module.exports = mongoose.model("comment", CommentSchema);
+module.exports = mongoose.model("Comment", CommentSchema);

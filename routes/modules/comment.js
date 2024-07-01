@@ -1,54 +1,17 @@
 const express = require("express");
 const router = express.Router();
-const Comment = require("../../models/comment");
+const commentController = require("../../controllers/commentController");
 
 /** 取得所有留言 */
-router.get("/", async (req, res) => {
-  try {
-    const comments = await Comment.find()
-      .populate("author")
-      .populate("replyTo")
-      .lean();
-    res.json(comments);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+router.get("/", commentController.getComment);
 
 /** 新增留言 */
-router.post("/", async (req, res) => {
-  const { author, replyTo, content } = req.body;
-  try {
-    const comment = await Comment.create({ author, replyTo, content });
-    res.status(201).json(comment);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+router.post("/", commentController.createComment);
 
 /** 更新留言 */
-router.put("/:id", async (req, res) => {
-  const { content } = req.body;
-  try {
-    const updatedComment = await Comment.findByIdAndUpdate(
-      req.params.id,
-      { content },
-      { new: true }
-    );
-    res.json(updatedComment);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+router.put("/:id", commentController.editComment);
 
 /** 刪除留言 */
-router.delete("/:id", async (req, res) => {
-  try {
-    await Comment.findByIdAndDelete(req.params.id);
-    res.json({ message: "Comment deleted successfully" });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+router.delete("/:id", commentController.deleteComment);
 
 module.exports = router;

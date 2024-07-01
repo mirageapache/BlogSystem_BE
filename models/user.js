@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-// const { v4:uuidv4 } = require('uuid');
 const Schema = mongoose.Schema;
 
 /** 使用者 User Schema */
@@ -45,7 +44,6 @@ const UserSchema = new Schema({
   /** 註冊日期 */
   createdAt: {
     type: Date,
-    default: Date.now,
   },
   /** 帳號狀態 [0-未驗證 / 1-正常 / 2-黑名單 / 3-停用] */
   status: {

@@ -1,19 +1,18 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const UserSchema = require('./user');
 
 /** 系統通知訊息 System Message Schema */
 const SysMessageSchema = new Schema({
   /** 發送人 */
   sender:{
     type: mongoose.Schema.Types.ObjectId,
-    ref: UserSchema,
+    ref: "User",
     required: true,
   },
   /** 接收人 */
   receiver:{
     type: mongoose.Schema.Types.ObjectId,
-    ref: UserSchema,
+    ref: "User",
     required: true,
   },
   /** 訊息內容 */
@@ -42,4 +41,4 @@ const SysMessageSchema = new Schema({
   }
 });
 
-module.exports = mongoose.model("sysMessage", SysMessageSchema);
+module.exports = mongoose.model("SysMessage", SysMessageSchema);
