@@ -5,7 +5,7 @@ const { isEmpty } = require("lodash");
 
 const postController = {
   /** 取得所有貼文 */
-  getAllPost: async (req, res) => {
+  getAllPostList: async (req, res) => {
     try {
       const posts = await Post.find()
         .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
@@ -16,7 +16,11 @@ const postController = {
           avatar: 1,
           bgColor: 1,
         })
-        .populate("comments.author")
+        .populate({
+          path: "likedByUsers",
+          select: "_id account name avatar bgColor",
+        })
+        .populate("comments")
         .lean()
         .exec();
       res.status(200).json(posts);
@@ -25,7 +29,57 @@ const postController = {
     }
   },
 
-  /** 取得特定貼文 */
+  /** 取得搜尋貼文
+   * @param searchString 搜尋字串
+   * @param authorId 作者id
+   */
+  getSearchPostList: async (req, res) => {
+    const { searchString, authorId } = req.body;
+    let variable = {};
+
+    if (!isEmpty(searchString) && !isEmpty(authorId)) {
+      variable = {
+        $or: [
+          { content: new RegExp(searchString, 'i') },
+          { hashTags: new RegExp(searchString, 'i') },
+          { author: authorId },
+        ],
+      };
+    } else if (!isEmpty(searchString)) {
+      variable = {
+        $or: [
+          { content: new RegExp(searchString, 'i') },
+          { hashTags: new RegExp(searchString, 'i') },
+        ],
+      };
+    } else if (!isEmpty(authorId)) {
+      variable = { author: authorId };
+    }
+
+    try {
+      const posts = await Post.find(variable)
+        .sort({ createdAt: -1 })
+        .populate("author", {
+          _id: 1,
+          account: 1,
+          name: 1,
+          avatar: 1,
+          bgColor: 1,
+        })
+        .populate({
+          path: "likedByUsers",
+          select: "_id account name avatar bgColor",
+        })
+        .populate("comments")
+        .lean()
+        .exec();
+      res.status(200).json(posts);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+
+  /** 取得貼文詳細資料 */
   getPostDetail: async (req, res) => {
     const { postId } = req.body;
     try {
@@ -37,7 +91,11 @@ const postController = {
           avatar: 1,
           bgColor: 1,
         })
-        .populate("comments.author")
+        .populate({
+          path: "likedByUsers",
+          select: "_id account name avatar bgColor",
+        })
+        .populate("comments")
         .lean()
         .exec();
       if (!post) return res.status(404).json({ message: "Post not found" });
@@ -113,12 +171,12 @@ const postController = {
     }
   },
 
-  /** 喜歡/取消喜歡貼文
+  /** 喜歡/取消喜歡 貼文
    * @param postId 貼文Id
    * @param userId 使用者Id
    * @param action 'like' / 'unlike'
    */
-  handleLikePost: async (req, res) => {
+  toggleLikePost: async (req, res) => {
     const { postId, userId, action } = req.body;
 
     try {

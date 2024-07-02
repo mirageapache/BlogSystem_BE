@@ -5,9 +5,12 @@ const { uploadFile } = require("../../middleware/fileUtils");
 const { authorization } = require('../../middleware/auth');
 
 /** 取得所有貼文 */
-router.get('/all', postController.getAllPost);
+router.get('/all', postController.getAllPostList);
 
-/** 取得特定貼文 */
+/** 取得搜尋貼文 */
+router.post('/search', postController.getSearchPostList);
+
+/** 取得貼文詳細資料 */
 router.post('/detail', postController.getPostDetail);
 
 /** 新增貼文 */
@@ -20,6 +23,6 @@ router.patch('/update/:id', authorization, uploadFile.single("postImage"), postC
 router.delete('/delete', authorization, postController.deletePost);
 
 /** 喜歡/取消喜歡貼文 */
-router.patch('/like', postController.handleLikePost);
+router.patch('/toggleLikeAction', postController.toggleLikePost);
 
 module.exports = router;
