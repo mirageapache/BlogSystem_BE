@@ -20,9 +20,9 @@ router.post('/create/:id', authorization, uploadFile.single("postImage"), postCo
 router.patch('/update/:id', authorization, uploadFile.single("postImage"), postController.updatePost);
 
 /** 刪除貼文 */
-router.delete('/delete', authorization, postController.deletePost);
+router.delete('/delete/:id', authorization, postController.deletePost);
 
 /** 喜歡/取消喜歡貼文 */
-router.patch('/toggleLikeAction', postController.toggleLikePost);
+router.patch('/toggleLikeAction/:id', authorization, postController.toggleLikePost);
 
 module.exports = router;

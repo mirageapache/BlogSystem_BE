@@ -174,7 +174,7 @@ const postController = {
   /** 喜歡/取消喜歡 貼文
    * @param postId 貼文Id
    * @param userId 使用者Id
-   * @param action 'like' / 'unlike'
+   * @param action true / false
    */
   toggleLikePost: async (req, res) => {
     const { postId, userId, action } = req.body;
@@ -184,7 +184,7 @@ const postController = {
       const likeList = postData.likedByUsers;
       let newLikeList = likeList.map((obj) => obj.toString());
 
-      if (action === "like") {
+      if (action) {
         // like action
         if (!newLikeList.includes(userId)) newLikeList.push(userId);
       } else {
@@ -198,7 +198,11 @@ const postController = {
         postId,
         { likedByUsers: newLikeList },
         { new: true }
-      );
+      )
+      .populate({
+        path: "likedByUsers",
+        select: "_id account name avatar bgColor",
+      });
 
       return res.status(200).json({ message: "succeess", updateResult });
     } catch (error) {
