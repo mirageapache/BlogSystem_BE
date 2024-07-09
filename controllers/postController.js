@@ -40,16 +40,16 @@ const postController = {
     if (!isEmpty(searchString) && !isEmpty(authorId)) {
       variable = {
         $or: [
-          { content: new RegExp(searchString, 'i') },
-          { hashTags: new RegExp(searchString, 'i') },
+          { content: new RegExp(searchString, "i") },
+          { hashTags: new RegExp(searchString, "i") },
           { author: authorId },
         ],
       };
     } else if (!isEmpty(searchString)) {
       variable = {
         $or: [
-          { content: new RegExp(searchString, 'i') },
-          { hashTags: new RegExp(searchString, 'i') },
+          { content: new RegExp(searchString, "i") },
+          { hashTags: new RegExp(searchString, "i") },
         ],
       };
     } else if (!isEmpty(authorId)) {
@@ -83,7 +83,7 @@ const postController = {
   getPostDetail: async (req, res) => {
     const { postId } = req.body;
     try {
-      const post = await Post.findOne({_id: postId})
+      const post = await Post.findOne({ _id: postId })
         .populate("author", {
           _id: 1,
           account: 1,
@@ -122,7 +122,7 @@ const postController = {
         image: filePath,
         status: parseInt(status),
         hashTags: hashTagArr,
-        createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),  // 轉換時區時間
+        createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(), // 轉換時區時間
       });
       res.status(200).json(newPost);
     } catch (error) {
@@ -132,7 +132,7 @@ const postController = {
 
   /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
-    const { postId, content, status, hashTags, removeImage } = req.body;
+    const { postId, content, status, hashTags, imagePath } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     const postImage = req.file || {};
     const filePath = !isEmpty(postImage)
@@ -144,16 +144,18 @@ const postController = {
       status: parseInt(status),
       hashTags: hashTagArr,
       editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
+    };
+
+    if (filePath) {
+      variable = { ...variable, image: filePath }; // filePath沒值則不更新image
+    } else {
+      variable = { ...variable, image: imagePath }; // imagePath沒值表是刪除image
     }
 
-    if(filePath || removeImage) variable = { ...variable, image: filePath }; // filePath沒值則不更新image
-
     try {
-      const upadtedPost = await Post.findByIdAndUpdate(
-        postId,
-        variable,
-        { new: true }
-      ).lean();
+      const upadtedPost = await Post.findByIdAndUpdate(postId, variable, {
+        new: true,
+      }).lean();
 
       res.status(200).json(upadtedPost);
     } catch (error) {
@@ -198,8 +200,7 @@ const postController = {
         postId,
         { likedByUsers: newLikeList },
         { new: true }
-      )
-      .populate({
+      ).populate({
         path: "likedByUsers",
         select: "_id account name avatar bgColor",
       });
