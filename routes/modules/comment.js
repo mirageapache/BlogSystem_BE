@@ -3,7 +3,7 @@ const router = express.Router();
 const commentController = require("../../controllers/commentController");
 
 /** 取得所有留言 */
-router.get("/", commentController.getComment);
+router.get("/", commentController.getPostComment);
 
 /** 新增留言 */
 router.post("/", commentController.createComment);
