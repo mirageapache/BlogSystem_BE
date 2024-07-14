@@ -1,7 +1,17 @@
+const moment = require("moment-timezone");
 const Comment = require("../models/comment");
 const Post = require("../models/post");
 
 const commentController = {
+  /** 取得所有貼文(測試用) */
+  getAllComments: async (req, res) => {
+    try {
+      const comments = await Comment.find().lean();
+      res.status(200).json(comments);
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
+  },
   /** 取得貼文留言 */
   getPostComment: async (req, res) => {
     const { postId } = req.body;
@@ -21,33 +31,33 @@ const commentController = {
 
       res.status(200).json(comments);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ message: error.message });
     }
   },
 
   /** 新增留言 */
   createComment: async (req, res) => {
-    const { postid, author, replyTo, content } = req.body;
+    const { postId, userId, content } = req.body;
     try {
       // 在DB建立留言資料
       const comment = await Comment.create({ 
-        author,
-        replyTo,
+        author: userId,
         content,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
       });
 
-      const originCommentArr = await Post.findOne({ _id: postid }).select("comment").lean(); // 取得post原本的comment
+      const postData = await Post.findOne({ _id: postId }).select("comments").lean(); // 取得post原本的comment
+      const originCommentArr = postData.comments;
       originCommentArr.push(comment._id); // 新增新的comment
 
       // 將新建留言的id更新到post -> comment陣列
       const newCommentArr = await Post.findByIdAndUpdate(
-        postid,
-        {comment},
+        postId,
+        { comments: originCommentArr },
         { new: true }
       );
 
-      res.status(201).json(newCommentArr);
+      res.status(200).json(newCommentArr);
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
@@ -70,7 +80,7 @@ const commentController = {
   /** 刪除留言 */
   deleteComment: async (req, res) => {
     try {
-      await Comment.findByIdAndDelete(req.params.id);
+      await Comment.findByIdAndDelete(req.body.postId);
       res.json({ message: "Comment deleted successfully" });
     } catch (error) {
       res.status(400).json({ message: error.message });
