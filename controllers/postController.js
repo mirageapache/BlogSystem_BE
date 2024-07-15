@@ -95,7 +95,15 @@ const postController = {
           path: "likedByUsers",
           select: "_id account name avatar bgColor",
         })
-        .populate("comments")
+        .populate({
+          path: "comments",
+          select: "_id author replyto content createdAt",
+          populate: [
+            // 用巢狀的方式再嵌套User的資料
+            { path: "author", select: "_id account name avatar bgColor" },
+            { path: "replyTo", select: "_id account name avatar bgColor" },
+          ],
+        })
         .lean()
         .exec();
       if (!post) return res.status(404).json({ message: "Post not found" });
