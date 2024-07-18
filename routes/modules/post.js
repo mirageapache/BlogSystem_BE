@@ -25,4 +25,7 @@ router.delete('/delete/:id', authorization, postController.deletePost);
 /** 喜歡/取消喜歡貼文 */
 router.patch('/toggleLikeAction/:id', authorization, postController.toggleLikePost);
 
+/** 收藏/取消收藏貼文 */
+router.patch('/toggleStoreAction/:id', authorization, postController.toggleStorePost);
+
 module.exports = router;

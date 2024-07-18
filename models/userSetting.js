@@ -37,6 +37,16 @@ const UserSettingSchema = new Schema({
     type: Boolean,
     default: true,
   },
+  /** 文章收藏列表 */
+  articleCollect: {
+    type: [String],
+    default: [],
+  },
+  /** 貼文收藏列表 */
+  postCollect: {
+    type: [String],
+    default: [],
+  }
 });
 
 module.exports = mongoose.model("UserSetting", UserSettingSchema);
