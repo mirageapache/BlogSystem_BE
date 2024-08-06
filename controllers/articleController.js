@@ -1,4 +1,6 @@
 const moment = require("moment-timezone");
+const { isEmpty } = require("lodash");
+const { imgurFileHandler } = require("../middleware/fileUtils");
 const Article = require("../models/article");
 
 const articleController = {
@@ -80,8 +82,9 @@ const articleController = {
   },
   /** 新增文章 */
   createArticle: async (req, res) => {
-    const { author, title, content, subjects, hashTags } = req.body;
-    const subjectArr = !isEmpty(subjects) ? JSON.parse(subjects) : [];
+    const { userId, title, content, subject = '', hashTags } = req.body;
+    console.log(req.body);
+
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     const articleImage = req.file || {};
     const filePath = !isEmpty(articleImage)
@@ -90,11 +93,11 @@ const articleController = {
 
     try {
       const newArticle = await Article.create({
-        author,
+        author: userId,
         title,
         content,
         status: 0,
-        subjects: subjectArr,
+        subject,
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
         likedByUsers: [],
