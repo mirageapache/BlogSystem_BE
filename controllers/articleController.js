@@ -8,9 +8,19 @@ const articleController = {
   getAllArticle: async (req, res) => {
     try {
       const articles = await Article.find()
-        .populate("author")
-        .populate("comments.author")
-        .lean();
+      .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
+      .populate({
+        path: "author",
+        select: "_id account name avatar bgColor",
+      })
+      .populate({
+        path: "likedByUsers",
+        select: "_id account name avatar bgColor",
+      })
+      .populate("comments")
+      .lean()
+      .exec();
+
       res.status(200).json(articles);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -46,12 +56,9 @@ const articleController = {
     try {
       const articles = await Article.find(variable)
         .sort({ createdAt: -1 })
-        .populate("author", {
-          _id: 1,
-          account: 1,
-          name: 1,
-          avatar: 1,
-          bgColor: 1,
+        .populate({
+          path: "author",
+          select: "_id account name avatar bgColor",
         })
         .populate({
           path: "likedByUsers",
@@ -67,11 +74,27 @@ const articleController = {
   },
   /** 取得文章詳細資料 */
   getArticleDetail: async (req, res) => {
+    const { articleId } = req.body;
     try {
-      const article = await Article.findById(req.params.id)
-        .populate("author")
-        .populate("comments.author")
-        .lean();
+      const article = await Article.findOne({ _id: articleId })
+      .populate({
+        path: "author",
+        select: "_id account name avatar bgColor",
+      })
+      .populate({
+        path: "likedByUsers",
+        select: "_id account name avatar bgColor",
+      })
+      .populate({
+        path: "comments",
+        select: "_id author replyto content createdAt",
+        populate: [
+          // 用巢狀的方式再嵌套User的資料
+          { path: "author", select: "_id account name avatar bgColor" },
+          { path: "replyTo", select: "_id account name avatar bgColor" },
+        ],
+      })
+      .lean();
       if (!article) {
         return res.status(404).json({ message: "Article not found" });
       }
