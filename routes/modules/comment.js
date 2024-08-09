@@ -7,7 +7,7 @@ const { authorization } = require("../../middleware/auth");
 router.get("/all", commentController.getAllComments);
 
 /** 取得貼文留言 */
-router.post("/", commentController.getPostComment);
+router.post("/", commentController.getComment);
 
 /** 新增留言 */
 router.post("/create/:id", authorization, commentController.createComment);

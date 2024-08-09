@@ -1,6 +1,7 @@
 const moment = require("moment-timezone");
 const Comment = require("../models/comment");
 const Post = require("../models/post");
+const Article = require("../models/article");
 
 const commentController = {
   /** 取得所有貼文(測試用) */
@@ -13,10 +14,10 @@ const commentController = {
     }
   },
   /** 取得貼文留言 */
-  getPostComment: async (req, res) => {
-    const { postId } = req.body;
+  getComment: async (req, res) => {
+    const { id } = req.body;
     try {
-      const comments = await Post.findOne({ _id: postId })
+      const comments = await Post.findOne({ _id: id })
         .populate({
           path: "comments",
           select: "_id author replyto content createdAt",
@@ -37,7 +38,7 @@ const commentController = {
 
   /** 新增留言 */
   createComment: async (req, res) => {
-    const { postId, userId, content } = req.body;
+    const { id, userId, content, route } = req.body;
     try {
       // 在DB建立留言資料
       const comment = await Comment.create({ 
@@ -46,22 +47,35 @@ const commentController = {
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
       });
 
-      const postData = await Post.findOne({ _id: postId }).select("comments").lean(); // 取得post原本的comment
-      const originCommentArr = postData.comments;
-      originCommentArr.push(comment._id); // 新增新的comment
+      // 將新建留言的id更新到 post/article -> comment陣列
+      let newCommentArr;
+      if (route === "post"){
+        const postData = await Post.findOne({ _id: id }).select("comments").lean(); // 取得post原本的comment
+        const originCommentArr = postData.comments;
+        originCommentArr.push(comment._id);
 
-      // 將新建留言的id更新到post -> comment陣列
-      const newCommentArr = await Post.findByIdAndUpdate(
-        postId,
-        { comments: originCommentArr },
-        { new: true }
-      );
+        newCommentArr = await Post.findByIdAndUpdate(
+          id,
+          { comments: originCommentArr },
+          { new: true }
+        );
+      } else if (route === "article") {
+        const articleData = await Article.findOne({ _id: id }).select("comments").lean(); // 取得article原本的comment
+        const originCommentArr = articleData.comments;
+        originCommentArr.push(comment._id);
 
+        newCommentArr = await Article.findByIdAndUpdate(
+          id,
+          { comments: originCommentArr },
+          { new: true }
+        );
+      }
       res.status(200).json(newCommentArr);
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
   },
+  
   /** 更新留言 */
   editComment: async (req, res) => {
     const { content } = req.body;
