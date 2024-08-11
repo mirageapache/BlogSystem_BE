@@ -21,12 +21,12 @@ const articleController = {
       .lean()
       .exec();
 
-      res.status(200).json(articles);
+      return res.status(200).json(articles);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
-  /** 取得搜尋文章
+  /** 取得搜尋文章 or 特定使用者的文章
    * @param searchString 搜尋字串
    * @param authorId 作者id
    */
@@ -37,6 +37,7 @@ const articleController = {
     if (!isEmpty(searchString) && !isEmpty(authorId)) {
       variable = {
         $or: [
+          { title: new RegExp(searchString, "i") },
           { content: new RegExp(searchString, "i") },
           { hashTags: new RegExp(searchString, "i") },
           { author: authorId },
@@ -45,6 +46,7 @@ const articleController = {
     } else if (!isEmpty(searchString)) {
       variable = {
         $or: [
+          { title: new RegExp(searchString, "i") },
           { content: new RegExp(searchString, "i") },
           { hashTags: new RegExp(searchString, "i") },
         ],
@@ -67,9 +69,12 @@ const articleController = {
         .populate("comments")
         .lean()
         .exec();
-      res.status(200).json(articles);
+
+      if (isEmpty(articles)) return res.status(404).json({ message: "找不到相關文章`!"});
+
+      return res.status(200).json(articles);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
   /** 取得文章詳細資料 */
@@ -98,9 +103,9 @@ const articleController = {
       if (!article) {
         return res.status(404).json({ message: "Article not found" });
       }
-      res.status(200).json(article);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(200).json(article);
+    } catch (error) {``
+      return res.status(500).json({ message: error.message });
     }
   },
   /** 新增文章 */
@@ -126,9 +131,9 @@ const articleController = {
         likedByUsers: [],
         comments: [],
       });
-      res.status(200).json(newArticle);
+      return res.status(200).json(newArticle);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 
@@ -140,9 +145,9 @@ const articleController = {
         req.body,
         { new: true }
       ).lean();
-      res.status(200).json(updatedArticle);
+      return res.status(200).json(updatedArticle);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 
@@ -150,9 +155,9 @@ const articleController = {
   deleteArticle: async (req, res) => {
     try {
       await Article.findByIdAndDelete(req.params.id);
-      res.status(200).json({ message: "Article deleted successfully" });
+      return res.status(200).json({ message: "Article deleted successfully" });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
   /** 喜歡/取消喜歡 文章
