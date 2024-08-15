@@ -111,8 +111,6 @@ const articleController = {
   /** 新增文章 */
   createArticle: async (req, res) => {
     const { userId, title, content, subject = '', hashTags } = req.body;
-    console.log(req.body);
-
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     const articleImage = req.file || {};
     const filePath = !isEmpty(articleImage)
@@ -139,10 +137,25 @@ const articleController = {
 
   /** 編輯(更新)文章 */
   updateArticle: async (req, res) => {
+    const { articleId, userId, title, content, subject = '', hashTags } = req.body;
+    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const articleImage = req.file || {};
+    const filePath = !isEmpty(articleImage)
+      ? await imgurFileHandler(articleImage)
+      : null; // imgur圖片檔網址(路徑)
+
     try {
       const updatedArticle = await Article.findByIdAndUpdate(
-        req.params.id,
-        req.body,
+        articleId,
+        {
+          author: userId,
+          title,
+          content,
+          status: 0,
+          subject,
+          hashTags: hashTagArr,
+          editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
+        },
         { new: true }
       ).lean();
       return res.status(200).json(updatedArticle);
