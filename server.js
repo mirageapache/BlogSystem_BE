@@ -9,7 +9,9 @@ const port = process.env.PORT || 3000;
 const routes = require("./routes");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://mirageapache.github.io'],
+}));
 app.use(bodyParser.json());
 
 // 資料庫連線設定
