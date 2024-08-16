@@ -187,6 +187,7 @@ const userController = {
   },
   /** 個人-更新使用者資料 */
   updateUserData: async (req, res) => {
+    console.log(req.body);
     const { email, name, account, bio, language, emailPrompt, mobilePrompt } =
       req.body;
     const avatarFile = req.file || {};
