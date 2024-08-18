@@ -9,7 +9,15 @@ const port = process.env.PORT || 3000;
 const routes = require("./routes");
 
 const app = express();
-app.use(cors());
+
+app.use(
+  cors({
+    origin: "*", // 或者指定允許的源
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 app.use(bodyParser.json());
 
 // 資料庫連線設定

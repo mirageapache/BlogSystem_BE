@@ -72,7 +72,7 @@ const userController = {
         }
       });
 
-      return res.status(200).json(userFollowList );
+      return res.status(200).json(userFollowList);
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
@@ -187,7 +187,6 @@ const userController = {
   },
   /** 個人-更新使用者資料 */
   updateUserData: async (req, res) => {
-    console.log(req.body);
     const { email, name, account, bio, language, emailPrompt, mobilePrompt } =
       req.body;
     const avatarFile = req.file || {};

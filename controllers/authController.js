@@ -94,7 +94,7 @@ const loginController = {
       const userSetting = await UserSetting.findOne({ user: user._id }).lean();
       // 產生並回傳 JWT token
       const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
+        expiresIn: "7d", // 設定token有效時間
       });
 
       return res.status(200).json({
