@@ -69,9 +69,6 @@ const articleController = {
         .populate("comments")
         .lean()
         .exec();
-
-      if (isEmpty(articles)) return res.status(404).json({ message: "找不到相關文章`!"});
-
       return res.status(200).json(articles);
     } catch (error) {
       return res.status(500).json({ message: error.message });

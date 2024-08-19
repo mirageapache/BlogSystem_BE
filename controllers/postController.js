@@ -30,7 +30,7 @@ const postController = {
     }
   },
 
-  /** 取得搜尋貼文
+  /** 取得搜尋貼文 or 特定使用者的文章
    * @param searchString 搜尋字串
    * @param authorId 作者id
    */

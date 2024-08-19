@@ -30,9 +30,9 @@ const userController = {
       // $or 是mongoose的搜尋條件語法
       variable = {
         $or: [
-          { email: searchString },
-          { account: searchString },
-          { name: searchString },
+          { email: new RegExp(searchString, "i") }, // 搜尋時不區分大小寫
+          { account: new RegExp(searchString, "i") },
+          { name: new RegExp(searchString, "i") },
         ],
       };
     }
@@ -42,14 +42,23 @@ const userController = {
       const users = await User.find(variable)
         .select("_id account name avatar bgColor")
         .lean();
-      if (isEmpty(users))
-        return res.status(404).send({ message: "User not found" });
+      if (isEmpty(users)) return res.status(200).send({data: [], message: "User not found" }); // 搜尋不到相關使用者
+      if (isEmpty(userId)) return res.status(200).send(users); // 未登入則不判斷追蹤狀態，直接回傳搜尋結果
+
+      console.log(users);
 
       // 取得追蹤清單
       const follows = await Follow.find({ follower: userId })
         .select("followed followState")
-        .lean();
-      if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList 直接回傳user list data
+        .populate({
+          path: "follower",
+          select: "_id",
+        })
+        .lean()
+        .exec();
+      if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList(表示未追縱任何人)，則直接回傳userList
+
+      console.log(follows);
 
       // 將追蹤清單轉換為哈希表(Object)
       const followsMap = follows.reduce((acc, follow) => {
