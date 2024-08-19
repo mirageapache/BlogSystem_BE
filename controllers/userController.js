@@ -42,10 +42,9 @@ const userController = {
       const users = await User.find(variable)
         .select("_id account name avatar bgColor")
         .lean();
-      if (isEmpty(users)) return res.status(200).send({data: [], message: "User not found" }); // 搜尋不到相關使用者
-      if (isEmpty(userId)) return res.status(200).send(users); // 未登入則不判斷追蹤狀態，直接回傳搜尋結果
 
-      console.log(users);
+      // 搜尋不到相關使用者；未登入則不判斷追蹤狀態，直接回傳搜尋結果
+      if (isEmpty(users) || isEmpty(userId)) return res.status(200).send(users);
 
       // 取得追蹤清單
       const follows = await Follow.find({ follower: userId })
@@ -58,8 +57,6 @@ const userController = {
         .exec();
       if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList(表示未追縱任何人)，則直接回傳userList
 
-      console.log(follows);
-
       // 將追蹤清單轉換為哈希表(Object)
       const followsMap = follows.reduce((acc, follow) => {
         acc[follow.followed.toString()] = follow;
@@ -69,7 +66,6 @@ const userController = {
       // 執行 mapping，新增是否已追蹤、通知狀態欄位
       const userFollowList = users.map((user) => {
         const followData = followsMap[user._id.toString()];
-
         if (!followData) {
           return { ...user, isFollow: false, followState: null };
         } else {
