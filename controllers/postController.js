@@ -268,6 +268,32 @@ const postController = {
       return res.status(400).json({ message: error.message });
     }
   },
+
+  /** 取得(搜尋)hashTag資料 */
+  getHashTag: async (req, res) => {
+    const { searchString } = req.body;
+    try {
+      const posts = await Post.find({hashTags: new RegExp(searchString, "i")})
+        .sort({ createdAt: -1 })
+        .populate("author", {
+          _id: 1,
+          account: 1,
+          name: 1,
+          avatar: 1,
+          bgColor: 1,
+        })
+        .populate({
+          path: "likedByUsers",
+          select: "_id account name avatar bgColor",
+        })
+        .populate("comments")
+        .lean()
+        .exec();
+      res.status(200).json(posts);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
 };
 
 module.exports = postController;

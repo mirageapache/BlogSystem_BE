@@ -28,4 +28,7 @@ router.patch('/toggleLikeAction/:id', authorization, postController.toggleLikePo
 /** 收藏/取消收藏貼文 */
 router.patch('/toggleStoreAction/:id', authorization, postController.toggleStorePost);
 
+/** 取得(搜尋)hashTag資料 */
+router.post('/hashTag', postController.getHashTag);
+
 module.exports = router;
