@@ -192,25 +192,35 @@ const userController = {
   },
   /** 個人-更新使用者資料 */
   updateUserData: async (req, res) => {
-    const { email, name, account, bio, language, emailPrompt, mobilePrompt } =
-      req.body;
+    const { email, name, account, bio, language, emailPrompt, mobilePrompt, removeAvatar } = req.body;
     const avatarFile = req.file || {};
-    const filePaths = !isEmpty(avatarFile)
-      ? await imgurFileHandler(avatarFile)
-      : null; // imgur圖片檔網址(路徑)
+    const filePaths = isEmpty(avatarFile) || Boolean(removeAvatar) ? null : await imgurFileHandler(avatarFile); // imgur圖片檔網址(路徑)
+      
+    let variables = { email, name, account, bio };
+    if (Boolean(removeAvatar) || !isEmpty(filePaths)) {
+      // 有更新或移除頭貼再加入filePaths
+      variables = {
+        ...variables,
+        avatar: filePaths, 
+      }
+    }
 
     try {
       if (email) emailExisting(email);
       if (account) accountExisting(account);
 
+      // 更新User Info
       const updateUser = await User.findByIdAndUpdate(
         req.params.id,
-        { email, name, account, bio, avatar: filePaths },
+        variables,
         { new: true } // true 代表會回傳更新後的資料
       )
         .select({ password: 0 })
         .lean();
 
+      if (isEmpty(updateUser)) return res.status(404).json({ message: 'user not found'});
+
+      // 更新User Setting
       const updateUserSetting = await UserSetting.findOneAndUpdate(
         { user: req.params.id },
         {
