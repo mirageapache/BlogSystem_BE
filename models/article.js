@@ -33,7 +33,7 @@ const ArticleSchema = new Schema({
     default: 0,
   },
   /** 主題類型 */
-  subject: {
+  subjects: {
     type: String,
   },
   /** 分類標籤 */

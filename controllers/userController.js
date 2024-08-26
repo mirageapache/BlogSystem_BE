@@ -30,9 +30,9 @@ const userController = {
       // $or 是mongoose的搜尋條件語法
       variable = {
         $or: [
-          { email: searchString },
-          { account: searchString },
-          { name: searchString },
+          { email: new RegExp(searchString, "i") }, // 搜尋時不區分大小寫
+          { account: new RegExp(searchString, "i") },
+          { name: new RegExp(searchString, "i") },
         ],
       };
     }
@@ -42,14 +42,20 @@ const userController = {
       const users = await User.find(variable)
         .select("_id account name avatar bgColor")
         .lean();
-      if (isEmpty(users))
-        return res.status(404).send({ message: "User not found" });
+
+      // 搜尋不到相關使用者；未登入則不判斷追蹤狀態，直接回傳搜尋結果
+      if (isEmpty(users) || isEmpty(userId)) return res.status(200).send(users);
 
       // 取得追蹤清單
       const follows = await Follow.find({ follower: userId })
         .select("followed followState")
-        .lean();
-      if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList 直接回傳user list data
+        .populate({
+          path: "follower",
+          select: "_id",
+        })
+        .lean()
+        .exec();
+      if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList(表示未追縱任何人)，則直接回傳userList
 
       // 將追蹤清單轉換為哈希表(Object)
       const followsMap = follows.reduce((acc, follow) => {
@@ -60,7 +66,6 @@ const userController = {
       // 執行 mapping，新增是否已追蹤、通知狀態欄位
       const userFollowList = users.map((user) => {
         const followData = followsMap[user._id.toString()];
-
         if (!followData) {
           return { ...user, isFollow: false, followState: null };
         } else {
@@ -72,7 +77,7 @@ const userController = {
         }
       });
 
-      return res.status(200).json(userFollowList );
+      return res.status(200).json(userFollowList);
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
@@ -187,31 +192,63 @@ const userController = {
   },
   /** 個人-更新使用者資料 */
   updateUserData: async (req, res) => {
-    const { email, name, account, bio, language, emailPrompt, mobilePrompt } =
-      req.body;
+    const userId = req.params.id;
+    const {
+      email,
+      name,
+      account,
+      bio,
+      language,
+      emailPrompt,
+      mobilePrompt,
+      removeAvatar,
+    } = req.body;
     const avatarFile = req.file || {};
-    const filePaths = !isEmpty(avatarFile)
-      ? await imgurFileHandler(avatarFile)
-      : null; // imgur圖片檔網址(路徑)
+    const filePaths =
+      isEmpty(avatarFile) || removeAvatar === "true"
+        ? null
+        : await imgurFileHandler(avatarFile); // imgur圖片檔網址(路徑)
+
+    let variables = { email, name, account, bio };
+    if (removeAvatar === "true" || !isEmpty(filePaths)) {
+      // 有更新或移除頭貼再加入filePaths
+      variables = {
+        ...variables,
+        avatar: filePaths,
+      };
+    }
 
     try {
-      if (email) emailExisting(email);
-      if (account) accountExisting(account);
+      if (email) {
+        const checkResult = await emailExisting(email, userId);
+        if (checkResult)
+          return res.status(401).json({ message: "該Email已存在！" });
+      }
+      if (account) {
+        const checkResult = await accountExisting(account, userId);
+        if (checkResult)
+          return res.status(401).json({ message: "該帳號名稱已存在！" });
+      }
 
+      // 更新User Info
       const updateUser = await User.findByIdAndUpdate(
         req.params.id,
-        { email, name, account, bio, avatar: filePaths },
+        variables,
         { new: true } // true 代表會回傳更新後的資料
       )
         .select({ password: 0 })
         .lean();
 
+      if (isEmpty(updateUser))
+        return res.status(404).json({ message: "user not found" });
+
+      // 更新User Setting
       const updateUserSetting = await UserSetting.findOneAndUpdate(
         { user: req.params.id },
         {
           language,
-          emailPrompt: Boolean(emailPrompt),
-          mobilePrompt: Boolean(mobilePrompt),
+          emailPrompt: emailPrompt === "true",
+          mobilePrompt: mobilePrompt === "true",
         },
         { new: true }
       ).lean();
