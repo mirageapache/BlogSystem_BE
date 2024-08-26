@@ -9,7 +9,7 @@ const {
 const authController = require("../../controllers/authController");
 
 /** 註冊 */
-router.post("/signup", [validateEmail, validatePassword], authController.singUp);
+router.post("/signup", [validateEmail, validatePassword], authController.signUp);
 
 /** 登入 */
 router.post("/signin", [validateEmail, validatePassword], authController.signIn);

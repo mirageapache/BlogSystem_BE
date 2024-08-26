@@ -16,7 +16,7 @@ const {
 
 const loginController = {
   /** 註冊 */
-  singUp: async (req, res) => {
+  signUp: async (req, res) => {
     // 資料驗證
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -28,7 +28,7 @@ const loginController = {
     let account = await checkAccountExist(email.split("@")[0]);
     // 驗證密碼&確認密碼
     if (password !== confirmPassword) {
-      return res.status(401).json({ message: "密碼與確認密碼不相符！" });
+      return res.status(401).json({ type: 'confrimPassword', message: "密碼與確認密碼不相符！" });
     }
 
     try {
@@ -52,14 +52,14 @@ const loginController = {
         status: 0,
       });
       // 初始化User追蹤資料
-      const follow = await Follow.create({
-        user: user._id,
+      await Follow.create({
+        user: user._id.toString(),
         following: [],
         follower: [],
       });
       // 初始化User設定
-      const setting = await UserSetting.create({
-        user: user._id,
+      await UserSetting.create({
+        user: user._id.toString(),
         language: "zh",
         theme: 0,
         emailPrompt: true,

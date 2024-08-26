@@ -18,7 +18,7 @@ const validateEmail = [
 /** 檢查 email 是否已存在 */
 const emailExisting = async (email) => {
   const result = await User.findOne({ email });
-    if (result) return res.status(401).json({ message: "該Email已存在！" });
+    if (result) return res.status(401).json({ type: 'email', message: "該Email已存在！" });
 }
 
 /** password 驗證 */
