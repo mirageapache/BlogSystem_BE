@@ -33,7 +33,7 @@ const loginController = {
 
     try {
       // 檢查email是否已存在
-      await emailExisting(email);
+      if(emailExisting(email)) return res.status(401).json({ type: 'email', message: "Email已存在!" });
 
       const salt = Number.parseInt(process.env.SALT_ROUNDS);
       const hashedPwd = bcrypt.hashSync(password, salt);

@@ -192,22 +192,43 @@ const userController = {
   },
   /** 個人-更新使用者資料 */
   updateUserData: async (req, res) => {
-    const { email, name, account, bio, language, emailPrompt, mobilePrompt, removeAvatar } = req.body;
+    const userId = req.params.id;
+    const {
+      email,
+      name,
+      account,
+      bio,
+      language,
+      emailPrompt,
+      mobilePrompt,
+      removeAvatar,
+    } = req.body;
     const avatarFile = req.file || {};
-    const filePaths = isEmpty(avatarFile) || Boolean(removeAvatar) ? null : await imgurFileHandler(avatarFile); // imgur圖片檔網址(路徑)
-      
+    const filePaths =
+      isEmpty(avatarFile) || removeAvatar === "true"
+        ? null
+        : await imgurFileHandler(avatarFile); // imgur圖片檔網址(路徑)
+
     let variables = { email, name, account, bio };
-    if (Boolean(removeAvatar) || !isEmpty(filePaths)) {
+    if (removeAvatar === "true" || !isEmpty(filePaths)) {
       // 有更新或移除頭貼再加入filePaths
       variables = {
         ...variables,
-        avatar: filePaths, 
-      }
+        avatar: filePaths,
+      };
     }
 
     try {
-      if (email) emailExisting(email);
-      if (account) accountExisting(account);
+      if (email) {
+        const checkResult = await emailExisting(email, userId);
+        if (checkResult)
+          return res.status(401).json({ message: "該Email已存在！" });
+      }
+      if (account) {
+        const checkResult = await accountExisting(account, userId);
+        if (checkResult)
+          return res.status(401).json({ message: "該帳號名稱已存在！" });
+      }
 
       // 更新User Info
       const updateUser = await User.findByIdAndUpdate(
@@ -218,15 +239,16 @@ const userController = {
         .select({ password: 0 })
         .lean();
 
-      if (isEmpty(updateUser)) return res.status(404).json({ message: 'user not found'});
+      if (isEmpty(updateUser))
+        return res.status(404).json({ message: "user not found" });
 
       // 更新User Setting
       const updateUserSetting = await UserSetting.findOneAndUpdate(
         { user: req.params.id },
         {
           language,
-          emailPrompt: Boolean(emailPrompt),
-          mobilePrompt: Boolean(mobilePrompt),
+          emailPrompt: emailPrompt === "true",
+          mobilePrompt: mobilePrompt === "true",
         },
         { new: true }
       ).lean();
