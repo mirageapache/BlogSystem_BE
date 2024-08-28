@@ -30,6 +30,47 @@ const postController = {
     }
   },
 
+  /** (動態)取得貼文 */
+  getPartialPostList: async (req, res) => {
+    try {
+      const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
+      const limit = parseInt(req.body.limit) || 5; // 每頁顯示的數量，預設為20
+      const skip = (page - 1) * limit; // 計算需要跳過的文檔數
+  
+      const posts = await Post.find()
+        .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
+        .skip(skip) // 跳過前面的文檔
+        .limit(limit) // 限制返回的文檔數
+        .populate("author", {
+          _id: 1,
+          account: 1,
+          name: 1,
+          avatar: 1,
+          bgColor: 1,
+        })
+        .populate({
+          path: "likedByUsers",
+          select: "_id account name avatar bgColor",
+        })
+        .populate("comments")
+        .lean()
+        .exec();
+  
+      // 獲取總文檔數，用於計算總頁數
+      const total = await Post.countDocuments();
+      const totalPages = Math.ceil(total / limit); // 總頁數
+      const nextPage = (page + 1) >= totalPages? -1 : (page + 1);  // 下一頁指標，如果是最後一頁則回傳-1
+  
+      res.status(200).json({
+        posts,
+        nextPage: nextPage,
+        totalPosts: total
+      });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+
   /** 取得搜尋貼文 or 特定使用者的文章
    * @param searchString 搜尋字串
    * @param authorId 作者id
