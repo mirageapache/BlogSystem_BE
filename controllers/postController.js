@@ -35,12 +35,12 @@ const postController = {
     try {
       const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
       const limit = parseInt(req.body.limit) || 5; // 每頁顯示的數量，預設為20
-      const skip = (page - 1) * limit; // 計算需要跳過的文檔數
+      const skip = (page - 1) * limit; // 計算需要跳過的貼文資料數
   
       const posts = await Post.find()
         .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
-        .skip(skip) // 跳過前面的文檔
-        .limit(limit) // 限制返回的文檔數
+        .skip(skip) // 跳過前面的資料
+        .limit(limit) // 限制返回的資料數
         .populate("author", {
           _id: 1,
           account: 1,
@@ -77,6 +77,9 @@ const postController = {
    */
   getSearchPostList: async (req, res) => {
     const { searchString, authorId } = req.body;
+    const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
+    const limit = parseInt(req.body.limit) || 5; // 每頁顯示的數量，預設為20
+    const skip = (page - 1) * limit; // 計算需要跳過的資料數
     let variable = {};
 
     if (!isEmpty(searchString) && !isEmpty(authorId)) {
@@ -101,6 +104,8 @@ const postController = {
     try {
       const posts = await Post.find(variable)
         .sort({ createdAt: -1 })
+        .skip(skip) // 跳過前面的資料
+        .limit(limit) // 限制返回的資料數
         .populate("author", {
           _id: 1,
           account: 1,
@@ -115,7 +120,17 @@ const postController = {
         .populate("comments")
         .lean()
         .exec();
-      res.status(200).json(posts);
+
+      // 獲取總文檔數，用於計算總頁數
+      const total = await Post.countDocuments();
+      const totalPages = Math.ceil(total / limit); // 總頁數
+      const nextPage = (page + 1) >= totalPages? -1 : (page + 1);  // 下一頁指標，如果是最後一頁則回傳-1
+  
+      res.status(200).json({
+        posts,
+        nextPage: nextPage,
+        totalPosts: total
+      });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
