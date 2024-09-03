@@ -122,14 +122,14 @@ const postController = {
         .exec();
 
       // 獲取總文檔數，用於計算總頁數
-      const total = await Post.countDocuments();
+      const total = await Post.countDocuments(variable);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = (page + 1) >= totalPages? -1 : (page + 1);  // 下一頁指標，如果是最後一頁則回傳-1
   
       res.status(200).json({
         posts,
         nextPage: nextPage,
-        totalPosts: total
+        totalPosts: total,
       });
     } catch (error) {
       res.status(500).json({ message: error.message });
