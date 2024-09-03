@@ -1,8 +1,8 @@
-const Post = require("../models/post");
-const moment = require("moment-timezone");
-const { imgurFileHandler } = require("../middleware/fileUtils");
-const { isEmpty } = require("lodash");
-const UserSetting = require("../models/userSetting");
+const Post = require('../models/post');
+const moment = require('moment-timezone');
+const { imgurFileHandler } = require('../middleware/fileUtils');
+const { isEmpty } = require('lodash');
+const UserSetting = require('../models/userSetting');
 
 const postController = {
   /** 取得所有貼文 */
@@ -10,7 +10,7 @@ const postController = {
     try {
       const posts = await Post.find()
         .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
-        .populate("author", {
+        .populate('author', {
           _id: 1,
           account: 1,
           name: 1,
@@ -18,10 +18,10 @@ const postController = {
           bgColor: 1,
         })
         .populate({
-          path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          path: 'likedByUsers',
+          select: '_id account name avatar bgColor',
         })
-        .populate("comments")
+        .populate('comments')
         .lean()
         .exec();
       res.status(200).json(posts);
@@ -36,12 +36,12 @@ const postController = {
       const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
       const limit = parseInt(req.body.limit) || 5; // 每頁顯示的數量，預設為20
       const skip = (page - 1) * limit; // 計算需要跳過的貼文資料數
-  
+
       const posts = await Post.find()
         .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
         .skip(skip) // 跳過前面的資料
         .limit(limit) // 限制返回的資料數
-        .populate("author", {
+        .populate('author', {
           _id: 1,
           account: 1,
           name: 1,
@@ -49,22 +49,22 @@ const postController = {
           bgColor: 1,
         })
         .populate({
-          path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          path: 'likedByUsers',
+          select: '_id account name avatar bgColor',
         })
-        .populate("comments")
+        .populate('comments')
         .lean()
         .exec();
-  
+
       // 獲取總文檔數，用於計算總頁數
       const total = await Post.countDocuments();
       const totalPages = Math.ceil(total / limit); // 總頁數
-      const nextPage = (page + 1) >= totalPages? -1 : (page + 1);  // 下一頁指標，如果是最後一頁則回傳-1
-  
+      const nextPage = page + 1 >= totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
       res.status(200).json({
         posts,
         nextPage: nextPage,
-        totalPosts: total
+        totalPosts: total,
       });
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -85,16 +85,16 @@ const postController = {
     if (!isEmpty(searchString) && !isEmpty(authorId)) {
       variable = {
         $or: [
-          { content: new RegExp(searchString, "i") },
-          { hashTags: new RegExp(searchString, "i") },
+          { content: new RegExp(searchString, 'i') },
+          { hashTags: new RegExp(searchString, 'i') },
           { author: authorId },
         ],
       };
     } else if (!isEmpty(searchString)) {
       variable = {
         $or: [
-          { content: new RegExp(searchString, "i") },
-          { hashTags: new RegExp(searchString, "i") },
+          { content: new RegExp(searchString, 'i') },
+          { hashTags: new RegExp(searchString, 'i') },
         ],
       };
     } else if (!isEmpty(authorId)) {
@@ -106,7 +106,7 @@ const postController = {
         .sort({ createdAt: -1 })
         .skip(skip) // 跳過前面的資料
         .limit(limit) // 限制返回的資料數
-        .populate("author", {
+        .populate('author', {
           _id: 1,
           account: 1,
           name: 1,
@@ -114,25 +114,30 @@ const postController = {
           bgColor: 1,
         })
         .populate({
-          path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          path: 'likedByUsers',
+          select: '_id account name avatar bgColor',
         })
-        .populate("comments")
+        .populate('comments')
         .lean()
         .exec();
 
       // 獲取總文檔數，用於計算總頁數
       const total = await Post.countDocuments(variable);
       const totalPages = Math.ceil(total / limit); // 總頁數
-      const nextPage = (page + 1) >= totalPages? -1 : (page + 1);  // 下一頁指標，如果是最後一頁則回傳-1
-  
-      res.status(200).json({
+      const nextPage = page + 1 >= totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
+      if (skip === 0 && isEmpty(posts) && posts.length === 0)
+        return res.status(200).json({
+          posts, code: 'NO_FOUND',
+        });
+
+      return res.status(200).json({
         posts,
         nextPage: nextPage,
         totalPosts: total,
       });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -141,7 +146,7 @@ const postController = {
     const { postId } = req.body;
     try {
       const post = await Post.findOne({ _id: postId })
-        .populate("author", {
+        .populate('author', {
           _id: 1,
           account: 1,
           name: 1,
@@ -149,21 +154,21 @@ const postController = {
           bgColor: 1,
         })
         .populate({
-          path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          path: 'likedByUsers',
+          select: '_id account name avatar bgColor',
         })
         .populate({
-          path: "comments",
-          select: "_id author replyto content createdAt",
+          path: 'comments',
+          select: '_id author replyto content createdAt',
           populate: [
             // 用巢狀的方式再嵌套User的資料
-            { path: "author", select: "_id account name avatar bgColor" },
-            { path: "replyTo", select: "_id account name avatar bgColor" },
+            { path: 'author', select: '_id account name avatar bgColor' },
+            { path: 'replyTo', select: '_id account name avatar bgColor' },
           ],
         })
         .lean()
         .exec();
-      if (!post) return res.status(404).json({ message: "Post not found" });
+      if (!post) return res.status(404).json({ message: 'Post not found' });
 
       res.status(200).json(post);
     } catch (error) {
@@ -187,7 +192,7 @@ const postController = {
         image: filePath,
         status: parseInt(status),
         hashTags: hashTagArr,
-        createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(), // 轉換時區時間
+        createdAt: moment.tz(new Date(), 'Asia/Taipei').toDate(), // 轉換時區時間
       });
       res.status(200).json(newPost);
     } catch (error) {
@@ -208,7 +213,7 @@ const postController = {
       content,
       status: parseInt(status),
       hashTags: hashTagArr,
-      editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
+      editedAt: moment.tz(new Date(), 'Asia/Taipei').toDate(),
     };
 
     if (filePath) {
@@ -232,7 +237,7 @@ const postController = {
   deletePost: async (req, res) => {
     try {
       await Post.findByIdAndDelete(req.body.id);
-      res.status(200).json({ message: "Post deleted successfully" });
+      res.status(200).json({ message: 'Post deleted successfully' });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -266,11 +271,11 @@ const postController = {
         { likedByUsers: newLikeList },
         { new: true }
       ).populate({
-        path: "likedByUsers",
-        select: "_id account name avatar bgColor",
+        path: 'likedByUsers',
+        select: '_id account name avatar bgColor',
       });
 
-      return res.status(200).json({ message: "succeess", updateResult });
+      return res.status(200).json({ message: 'succeess', updateResult });
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
@@ -288,10 +293,10 @@ const postController = {
     // 2.更新user 的post收藏清單
     try {
       let collectionCount = await Post.findById(postId)
-        .select("collectionCount")
+        .select('collectionCount')
         .lean(); // 取得貼文的收藏數
       let postCollect = await UserSetting.findOne({ user: userId })
-        .select("postCollect")
+        .select('postCollect')
         .lean(); // 取得user的貼文收藏清單
 
       if (action) {
@@ -319,7 +324,7 @@ const postController = {
         { new: true }
       );
 
-      return res.status(200).json({ message: "succeess", newPostData });
+      return res.status(200).json({ message: 'succeess', newPostData });
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
@@ -329,9 +334,9 @@ const postController = {
   getHashTag: async (req, res) => {
     const { searchString } = req.body;
     try {
-      const posts = await Post.find({hashTags: new RegExp(searchString, "i")})
+      const posts = await Post.find({ hashTags: new RegExp(searchString, 'i') })
         .sort({ createdAt: -1 })
-        .populate("author", {
+        .populate('author', {
           _id: 1,
           account: 1,
           name: 1,
@@ -339,10 +344,10 @@ const postController = {
           bgColor: 1,
         })
         .populate({
-          path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          path: 'likedByUsers',
+          select: '_id account name avatar bgColor',
         })
-        .populate("comments")
+        .populate('comments')
         .lean()
         .exec();
       res.status(200).json(posts);
