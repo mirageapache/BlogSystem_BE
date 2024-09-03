@@ -26,12 +26,52 @@ const articleController = {
       return res.status(500).json({ message: error.message });
     }
   },
+  /** (動態)取得文章 */
+  getPartialArticle: async (req, res) => {
+    try {
+      const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
+      const limit = parseInt(req.body.limit) || 20; // 每頁顯示的數量，預設為20
+      const skip = (page - 1) * limit; // 計算需要跳過的貼文資料數
+
+      const articles = await Article.find()
+      .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
+      .skip(skip) // 跳過前面的資料
+      .limit(limit) // 限制返回的資料數
+      .populate({
+        path: "author",
+        select: "_id account name avatar bgColor",
+      })
+      .populate({
+        path: "likedByUsers",
+        select: "_id account name avatar bgColor",
+      })
+      .populate("comments")
+      .lean()
+      .exec();
+
+      // 文章總筆數，用於計算總頁數
+      const total = await Post.countDocuments();
+      const totalArticle = Math.ceil(total / limit); // 總頁數
+      const nextPage = page + 1 >= totalArticle ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
+      return res.status(200).json({
+        articles,
+        nextPage: nextPage,
+        totalArticle: total,
+      });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  },
   /** 取得搜尋文章 or 特定使用者的文章
    * @param searchString 搜尋字串
    * @param authorId 作者id
    */
   getSearchArticleList: async (req, res) => {
     const { searchString, authorId } = req.body;
+    const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
+    const limit = parseInt(req.body.limit) || 20; // 每頁顯示的數量，預設為20
+    const skip = (page - 1) * limit; // 計算需要跳過的資料數
     let variable = {};
 
     if (!isEmpty(searchString) && !isEmpty(authorId)) {
@@ -58,6 +98,8 @@ const articleController = {
     try {
       const articles = await Article.find(variable)
         .sort({ createdAt: -1 })
+        .skip(skip) // 跳過前面的資料
+        .limit(limit) // 限制返回的資料數
         .populate({
           path: "author",
           select: "_id account name avatar bgColor",
@@ -69,7 +111,22 @@ const articleController = {
         .populate("comments")
         .lean()
         .exec();
-      return res.status(200).json(articles);
+
+      // 取得搜尋資料總數，用於計算總數
+      const total = await Post.countDocuments(variable);
+      const totalPages = Math.ceil(total / limit); // 總頁數
+      const nextPage = page + 1 >= totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
+      if (skip === 0 && isEmpty(articles) && articles.length === 0)
+        return res.status(200).json({
+          articles, code: 'NO_FOUND',
+        });
+
+      return res.status(200).json({
+        articles,
+        nextPage: nextPage,
+        totalArticle: total,
+      });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }

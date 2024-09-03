@@ -34,7 +34,7 @@ const postController = {
   getPartialPostList: async (req, res) => {
     try {
       const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
-      const limit = parseInt(req.body.limit) || 5; // 每頁顯示的數量，預設為20
+      const limit = parseInt(req.body.limit) || 20; // 每頁顯示的數量，預設為20
       const skip = (page - 1) * limit; // 計算需要跳過的貼文資料數
 
       const posts = await Post.find()
@@ -56,18 +56,18 @@ const postController = {
         .lean()
         .exec();
 
-      // 獲取總文檔數，用於計算總頁數
+      // 貼文總筆數，用於計算頁數
       const total = await Post.countDocuments();
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 >= totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      res.status(200).json({
+      return res.status(200).json({
         posts,
         nextPage: nextPage,
         totalPosts: total,
       });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -78,7 +78,7 @@ const postController = {
   getSearchPostList: async (req, res) => {
     const { searchString, authorId } = req.body;
     const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
-    const limit = parseInt(req.body.limit) || 5; // 每頁顯示的數量，預設為20
+    const limit = parseInt(req.body.limit) || 20; // 每頁顯示的數量，預設為20
     const skip = (page - 1) * limit; // 計算需要跳過的資料數
     let variable = {};
 
@@ -121,7 +121,7 @@ const postController = {
         .lean()
         .exec();
 
-      // 獲取總文檔數，用於計算總頁數
+      // 取得搜尋資料總數，用於計算總數
       const total = await Post.countDocuments(variable);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 >= totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
