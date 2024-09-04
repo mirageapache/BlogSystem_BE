@@ -50,7 +50,7 @@ const articleController = {
       .exec();
 
       // 文章總筆數，用於計算總頁數
-      const total = await Post.countDocuments();
+      const total = await Article.countDocuments();
       const totalArticle = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 >= totalArticle ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
@@ -113,7 +113,7 @@ const articleController = {
         .exec();
 
       // 取得搜尋資料總數，用於計算總數
-      const total = await Post.countDocuments(variable);
+      const total = await Article.countDocuments(variable);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 >= totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
