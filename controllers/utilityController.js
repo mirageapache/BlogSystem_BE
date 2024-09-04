@@ -6,14 +6,14 @@ const utilityController = {
   encode: async (req, res) => {
     const string = req.body.string;
     const encodeStr = AES.encrypt(string, cryptoSecret);
-    res.status(200).json({ encodeStr });
+    return res.status(200).json({ encodeStr });
   },
 
   /** 字串解密 */
   decode: async (req, res) => {
     const string = req.body.string;
     const decodeStr = AES.decrypt(string, cryptoSecret);
-    res.status(200).json({ decodeStr });
+    return res.status(200).json({ decodeStr });
   },
 };
 

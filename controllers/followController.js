@@ -22,9 +22,9 @@ const followController = {
         };
       });
 
-      res.status(200).json(followListData);
+      return res.status(200).json(followListData);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: error.message });
     }
   },
   /** 取得粉絲清單(user是被追蹤人的情況) */
@@ -44,9 +44,9 @@ const followController = {
         return { ...follow.follower, followState: follow.followState };
       });
 
-      res.status(200).json(followListData);
+      return res.status(200).json(followListData);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: error.message });
     }
   },
   /** 追蹤
@@ -68,7 +68,6 @@ const followController = {
 
       return res.status(200).json({ message: "follow success" });
     } catch (err) {
-      console.error("追蹤失敗:", err.message);
       return res.status(400).json({ message: err.message });
     }
   },
@@ -91,7 +90,6 @@ const followController = {
 
       return res.status(200).json({ message: "unfollow success" });
     } catch (err) {
-      console.error("取消追蹤失敗:", err.message);
       return res.status(400).json({ message: err.message });
     }
   },

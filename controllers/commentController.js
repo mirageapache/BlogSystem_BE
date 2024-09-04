@@ -8,9 +8,9 @@ const commentController = {
   getAllComments: async (req, res) => {
     try {
       const comments = await Comment.find().lean();
-      res.status(200).json(comments);
+      return res.status(200).json(comments);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
   /** 取得貼文留言 */
@@ -30,9 +30,9 @@ const commentController = {
         .exec();
       if (!comments) return res.status(404).json({ message: "no comments" });
 
-      res.status(200).json(comments);
+      return res.status(200).json(comments);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 
@@ -70,9 +70,9 @@ const commentController = {
           { new: true }
         );
       }
-      res.status(200).json(newCommentArr);
+      return res.status(200).json(newCommentArr);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
   
@@ -87,7 +87,7 @@ const commentController = {
       );
       res.json(updatedComment);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 
@@ -95,9 +95,9 @@ const commentController = {
   deleteComment: async (req, res) => {
     try {
       await Comment.findByIdAndDelete(req.body.postId);
-      res.json({ message: "Comment deleted successfully" });
+      return res.status(200).json({ message: "Comment deleted successfully" });
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 };

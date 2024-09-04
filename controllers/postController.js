@@ -24,9 +24,9 @@ const postController = {
         .populate('comments')
         .lean()
         .exec();
-      res.status(200).json(posts);
+      return res.status(200).json(posts);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -170,9 +170,9 @@ const postController = {
         .exec();
       if (!post) return res.status(404).json({ message: 'Post not found' });
 
-      res.status(200).json(post);
+      return res.status(200).json(post);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -194,9 +194,9 @@ const postController = {
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), 'Asia/Taipei').toDate(), // 轉換時區時間
       });
-      res.status(200).json(newPost);
+      return res.status(200).json(newPost);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 
@@ -227,9 +227,9 @@ const postController = {
         new: true,
       }).lean();
 
-      res.status(200).json(upadtedPost);
+      return res.status(200).json(upadtedPost);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 
@@ -237,9 +237,9 @@ const postController = {
   deletePost: async (req, res) => {
     try {
       await Post.findByIdAndDelete(req.body.id);
-      res.status(200).json({ message: 'Post deleted successfully' });
+      return res.status(200).json({ message: 'Post deleted successfully' });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -333,9 +333,17 @@ const postController = {
   /** 取得(搜尋)hashTag資料 */
   getHashTag: async (req, res) => {
     const { searchString } = req.body;
+    const page = parseInt(req.body.page) || 1;
+    const limit = parseInt(req.body.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    if (isEmpty(searchString)) return res.status(404).json({ code:'NO_SEARCH_STRING' });
+
     try {
       const posts = await Post.find({ hashTags: new RegExp(searchString, 'i') })
         .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
         .populate('author', {
           _id: 1,
           account: 1,
@@ -350,9 +358,24 @@ const postController = {
         .populate('comments')
         .lean()
         .exec();
-      res.status(200).json(posts);
+
+      // 取得搜尋資料總數，用於計算總數
+      const total = await Post.countDocuments({ hashTags: new RegExp(searchString, 'i') });
+      const totalPages = Math.ceil(total / limit); // 總頁數
+      const nextPage = page + 1 >= totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
+      if (skip === 0 && isEmpty(posts) && posts.length === 0)
+        return res.status(200).json({
+          posts, code: 'NO_FOUND',
+        });
+
+      return res.status(200).json({
+        posts,
+        nextPage: nextPage,
+        totalPost: total,
+      });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 };
