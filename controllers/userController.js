@@ -45,8 +45,18 @@ const userController = {
         .select("_id account name avatar bgColor")
         .lean();
 
-      // 搜尋不到相關使用者；未登入則不判斷追蹤狀態，直接回傳搜尋結果
-      if (isEmpty(users) || isEmpty(userId)) return res.status(200).send({ users, code: "NOT_FOUND"});
+      // 搜尋不到相關使用者
+      if (isEmpty(users) || users.length === 0) return res.status(200).send({ userList: users, code: "NOT_FOUND" });
+      
+      const total = await User.countDocuments(variable);
+      const totalPages = Math.ceil(total / limit);
+      const nextPage = page + 1 >= totalPages ? -1 : page + 1;
+      // 未登入則不判斷追蹤狀態，直接回傳搜尋結果
+      if (!isEmpty(users) && isEmpty(userId)) return res.status(200).send({ 
+        userList: users,
+        nextPage,
+        totalUser: total,
+      });
 
       // 取得追蹤清單
       const follows = await Follow.find({ follower: userId })
@@ -79,14 +89,10 @@ const userController = {
         }
       });
 
-      const total = await User.countDocuments(variable);
-      const totalPages = Math.ceil(total / limit); // 總頁數
-      const nextPage = page + 1 >= totalPages ? -1 : page + 1;
-
       return res.status(200).json({
-        userFollowList,
+        userList: userFollowList,
         nextPage,
-        totalArticle: total,
+        totalUser: total,
       });
     } catch (error) {
       return res.status(400).json({ error: error.message });
