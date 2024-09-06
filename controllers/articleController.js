@@ -119,12 +119,12 @@ const articleController = {
 
       if (skip === 0 && isEmpty(articles) && articles.length === 0)
         return res.status(200).json({
-          articles, code: 'NO_FOUND',
+          articles, code: 'NOT_FOUND',
         });
 
       return res.status(200).json({
         articles,
-        nextPage: nextPage,
+        nextPage,
         totalArticle: total,
       });
     } catch (error) {

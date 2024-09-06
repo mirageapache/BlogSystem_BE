@@ -128,7 +128,7 @@ const postController = {
 
       if (skip === 0 && isEmpty(posts) && posts.length === 0)
         return res.status(200).json({
-          posts, code: 'NO_FOUND',
+          posts, code: 'NOT_FOUND',
         });
 
       return res.status(200).json({
@@ -366,7 +366,7 @@ const postController = {
 
       if (skip === 0 && isEmpty(posts) && posts.length === 0)
         return res.status(200).json({
-          posts, code: 'NO_FOUND',
+          posts, code: 'NOT_FOUND',
         });
 
       return res.status(200).json({
