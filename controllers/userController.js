@@ -30,7 +30,6 @@ const userController = {
       // $or 是mongoose的搜尋條件語法
       variable = {
         $or: [
-          { email: new RegExp(searchString, "i") }, // 搜尋時不區分大小寫
           { account: new RegExp(searchString, "i") },
           { name: new RegExp(searchString, "i") },
         ],
@@ -46,17 +45,19 @@ const userController = {
         .lean();
 
       // 搜尋不到相關使用者
-      if (isEmpty(users) || users.length === 0) return res.status(200).send({ userList: users, code: "NOT_FOUND" });
-      
+      if (isEmpty(users) || users.length === 0)
+        return res.status(200).send({ userList: users, code: "NOT_FOUND" });
+
       const total = await User.countDocuments(variable);
       const totalPages = Math.ceil(total / limit);
-      const nextPage = page + 1 >= totalPages ? -1 : page + 1;
+      const nextPage = page + 1 > totalPages ? -1 : page + 1;
       // 未登入則不判斷追蹤狀態，直接回傳搜尋結果
-      if (!isEmpty(users) && isEmpty(userId)) return res.status(200).send({ 
-        userList: users,
-        nextPage,
-        totalUser: total,
-      });
+      if (!isEmpty(users) && isEmpty(userId))
+        return res.status(200).send({
+          userList: users,
+          nextPage,
+          totalUser: total,
+        });
 
       // 取得追蹤清單
       const follows = await Follow.find({ follower: userId })
