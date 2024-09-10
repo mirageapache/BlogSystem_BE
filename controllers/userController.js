@@ -18,19 +18,18 @@ const userController = {
       return res.status(400).json({ message: error.message });
     }
   },
-  /** 取得搜尋使用者清單(含追蹤資料)
-   * @param searchString 搜尋字串
-   * @param userId 當前使用者userId(用來判斷是否已追蹤)
-   */
+  /** 取得搜尋使用者清單(含追蹤資料) */
   getSearchUserList: async (req, res) => {
     const { searchString, userId } = req.body;
+    const page = parseInt(req.body.page) || 1;
+    const limit = parseInt(req.body.limit) || 20;
+    const skip = (page - 1) * limit;
     let variable = {};
 
     if (!isEmpty(searchString)) {
       // $or 是mongoose的搜尋條件語法
       variable = {
         $or: [
-          { email: new RegExp(searchString, "i") }, // 搜尋時不區分大小寫
           { account: new RegExp(searchString, "i") },
           { name: new RegExp(searchString, "i") },
         ],
@@ -40,11 +39,25 @@ const userController = {
     try {
       // 取得搜尋結果的使用者清單
       const users = await User.find(variable)
+        .skip(skip)
+        .limit(limit)
         .select("_id account name avatar bgColor")
         .lean();
 
-      // 搜尋不到相關使用者；未登入則不判斷追蹤狀態，直接回傳搜尋結果
-      if (isEmpty(users) || isEmpty(userId)) return res.status(200).send(users);
+      // 搜尋不到相關使用者
+      if (isEmpty(users) || users.length === 0)
+        return res.status(200).send({ userList: users, code: "NOT_FOUND" });
+
+      const total = await User.countDocuments(variable);
+      const totalPages = Math.ceil(total / limit);
+      const nextPage = page + 1 > totalPages ? -1 : page + 1;
+      // 未登入則不判斷追蹤狀態，直接回傳搜尋結果
+      if (!isEmpty(users) && isEmpty(userId))
+        return res.status(200).send({
+          userList: users,
+          nextPage,
+          totalUser: total,
+        });
 
       // 取得追蹤清單
       const follows = await Follow.find({ follower: userId })
@@ -77,7 +90,11 @@ const userController = {
         }
       });
 
-      return res.status(200).json(userFollowList);
+      return res.status(200).json({
+        userList: userFollowList,
+        nextPage,
+        totalUser: total,
+      });
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }

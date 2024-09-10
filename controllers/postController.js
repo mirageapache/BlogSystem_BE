@@ -24,9 +24,50 @@ const postController = {
         .populate("comments")
         .lean()
         .exec();
-      res.status(200).json(posts);
+      return res.status(200).json(posts);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
+    }
+  },
+
+  /** (動態)取得貼文 */
+  getPartialPostList: async (req, res) => {
+    try {
+      const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
+      const limit = parseInt(req.body.limit) || 20; // 每頁顯示的數量，預設為20
+      const skip = (page - 1) * limit; // 計算需要跳過的貼文資料數
+
+      const posts = await Post.find()
+        .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
+        .skip(skip) // 跳過前面的資料
+        .limit(limit) // 限制返回的資料數
+        .populate("author", {
+          _id: 1,
+          account: 1,
+          name: 1,
+          avatar: 1,
+          bgColor: 1,
+        })
+        .populate({
+          path: "likedByUsers",
+          select: "_id account name avatar bgColor",
+        })
+        .populate("comments")
+        .lean()
+        .exec();
+
+      // 貼文總筆數，用於計算頁數
+      const total = await Post.countDocuments();
+      const totalPages = Math.ceil(total / limit); // 總頁數
+      const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
+      return res.status(200).json({
+        posts,
+        nextPage: nextPage,
+        totalPosts: total,
+      });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -36,6 +77,9 @@ const postController = {
    */
   getSearchPostList: async (req, res) => {
     const { searchString, authorId } = req.body;
+    const page = parseInt(req.body.page) || 1; // 獲取頁碼，預設為1
+    const limit = parseInt(req.body.limit) || 20; // 每頁顯示的數量，預設為20
+    const skip = (page - 1) * limit; // 計算需要跳過的資料數
     let variable = {};
 
     if (!isEmpty(searchString) && !isEmpty(authorId)) {
@@ -60,6 +104,8 @@ const postController = {
     try {
       const posts = await Post.find(variable)
         .sort({ createdAt: -1 })
+        .skip(skip) // 跳過前面的資料
+        .limit(limit) // 限制返回的資料數
         .populate("author", {
           _id: 1,
           account: 1,
@@ -74,9 +120,25 @@ const postController = {
         .populate("comments")
         .lean()
         .exec();
-      res.status(200).json(posts);
+
+      // 取得搜尋資料總數，用於計算總數
+      const total = await Post.countDocuments(variable);
+      const totalPages = Math.ceil(total / limit); // 總頁數
+      const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
+      if (skip === 0 && isEmpty(posts) && posts.length === 0)
+        return res.status(200).json({
+          posts,
+          code: "NOT_FOUND",
+        });
+
+      return res.status(200).json({
+        posts,
+        nextPage: nextPage,
+        totalPosts: total,
+      });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -109,9 +171,9 @@ const postController = {
         .exec();
       if (!post) return res.status(404).json({ message: "Post not found" });
 
-      res.status(200).json(post);
+      return res.status(200).json(post);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -133,9 +195,9 @@ const postController = {
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(), // 轉換時區時間
       });
-      res.status(200).json(newPost);
+      return res.status(200).json(newPost);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 
@@ -166,9 +228,9 @@ const postController = {
         new: true,
       }).lean();
 
-      res.status(200).json(upadtedPost);
+      return res.status(200).json(upadtedPost);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message });
     }
   },
 
@@ -176,9 +238,9 @@ const postController = {
   deletePost: async (req, res) => {
     try {
       await Post.findByIdAndDelete(req.body.id);
-      res.status(200).json({ message: "Post deleted successfully" });
+      return res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 
@@ -272,9 +334,18 @@ const postController = {
   /** 取得(搜尋)hashTag資料 */
   getHashTag: async (req, res) => {
     const { searchString } = req.body;
+    const page = parseInt(req.body.page) || 1;
+    const limit = parseInt(req.body.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    if (isEmpty(searchString))
+      return res.status(200).json({ posts: [], code: "NO_SEARCH_STRING" });
+
     try {
-      const posts = await Post.find({hashTags: new RegExp(searchString, "i")})
+      const posts = await Post.find({ hashTags: new RegExp(searchString, "i") })
         .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
         .populate("author", {
           _id: 1,
           account: 1,
@@ -289,9 +360,27 @@ const postController = {
         .populate("comments")
         .lean()
         .exec();
-      res.status(200).json(posts);
+
+      // 取得搜尋資料總數，用於計算總數
+      const total = await Post.countDocuments({
+        hashTags: new RegExp(searchString, "i"),
+      });
+      const totalPages = Math.ceil(total / limit); // 總頁數
+      const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
+      if (skip === 0 && isEmpty(posts) && posts.length === 0)
+        return res.status(200).json({
+          posts,
+          code: "NOT_FOUND",
+        });
+
+      return res.status(200).json({
+        posts,
+        nextPage: nextPage,
+        totalPost: total,
+      });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   },
 };

@@ -132,7 +132,7 @@ const loginController = {
   passwordEncode: async (req, res) => {
     const password = req.body.password;
     const hashedPwd = bcrypt.hashSync(password, process.env.SALT_ROUNDS);
-    res.status(200).json({ hashedPwd });
+    return res.status(200).json({ hashedPwd });
   },
 };
 

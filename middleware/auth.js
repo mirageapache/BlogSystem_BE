@@ -6,7 +6,7 @@ if (process.env.NODE_ENV !== "production") require("dotenv").config();
 const authorization = (req, res, next) => {
   const tokenString = req.header("Authorization");
   if (isEmpty(tokenString))
-    res.status(401).json({ message: "No token provided" }); // 回傳沒有收到 authToken 資料
+    return res.status(401).json({ message: "No token provided" }); // 回傳沒有收到 authToken 資料
   const token = tokenString.split(" ")[1];
   if (!token) return res.status(401).json({ message: "No token provided" });
 

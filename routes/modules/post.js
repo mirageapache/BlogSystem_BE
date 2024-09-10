@@ -7,6 +7,9 @@ const { authorization } = require('../../middleware/auth');
 /** 取得所有貼文 */
 router.get('/all', postController.getAllPostList);
 
+/** (動態)取得貼文 */
+router.post('/partial', postController.getPartialPostList);
+
 /** 取得搜尋貼文 */
 router.post('/search', postController.getSearchPostList);
 

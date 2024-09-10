@@ -1,12 +1,18 @@
+const { isEmpty } = require("lodash");
 const Follow = require("../models/follow");
 
 const followController = {
   /** 取得追蹤清單(user是追蹤人的情況) */
   getfollowingList: async (req, res) => {
     const { userId } = req.body;
+    const page = parseInt(req.body.page) || 1;
+    const limit = parseInt(req.body.limit) || 20;
+    const skip = (page - 1) * limit;
     try {
       const followedList = await Follow.find({ follower: userId })
         .select("followed followState")
+        .skip(skip)
+        .limit(limit)
         .populate({
           path: "followed",
           select: "_id account name avatar bgColor",
@@ -22,17 +28,36 @@ const followController = {
         };
       });
 
-      res.status(200).json(followListData);
+      const total = await Follow.countDocuments({ follower: userId });
+      const totalPages = Math.ceil(total / limit);
+      const nextPage = page + 1 > totalPages ? -1 : page + 1;
+
+      if (skip === 0 && isEmpty(followListData) && followListData.length === 0)
+        return res.status(200).json({
+          followList: followListData,
+          code: "NOT_FOUND",
+      });
+
+      return res.status(200).json({
+        followList: followListData,
+        nextPage,
+        totalUser: total,
+      });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: error.message });
     }
   },
   /** 取得粉絲清單(user是被追蹤人的情況) */
   getFollowerList: async (req, res) => {
     const { userId } = req.body;
+    const page = parseInt(req.body.page) || 1;
+    const limit = parseInt(req.body.limit) || 20;
+    const skip = (page - 1) * limit;
     try {
       const followerList = await Follow.find({ followed: userId })
         .select("user:follower followState")
+        .skip(skip)
+        .limit(limit)
         .populate({
           path: "follower",
           select: "_id account name avatar bgColor",
@@ -44,9 +69,23 @@ const followController = {
         return { ...follow.follower, followState: follow.followState };
       });
 
-      res.status(200).json(followListData);
+      const total = await Follow.countDocuments({ follower: userId });
+      const totalPages = Math.ceil(total / limit);
+      const nextPage = page + 1 > totalPages ? -1 : page + 1;
+
+      if (skip === 0 && isEmpty(followListData) && followListData.length === 0)
+        return res.status(200).json({
+          followList: followListData,
+          code: "NOT_FOUND",
+      });
+
+      return res.status(200).json({
+        followList: followListData,
+        nextPage,
+        totalUser: total,
+      });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: error.message });
     }
   },
   /** 追蹤
@@ -68,7 +107,6 @@ const followController = {
 
       return res.status(200).json({ message: "follow success" });
     } catch (err) {
-      console.error("追蹤失敗:", err.message);
       return res.status(400).json({ message: err.message });
     }
   },
@@ -91,7 +129,6 @@ const followController = {
 
       return res.status(200).json({ message: "unfollow success" });
     } catch (err) {
-      console.error("取消追蹤失敗:", err.message);
       return res.status(400).json({ message: err.message });
     }
   },
