@@ -28,9 +28,17 @@ router.patch(
   "/own/:id",
   authorization,
   [validateEmail, validateAccount],
-  uploadFile.single("avatarFile"),
   userController.updateUserData
 );
+
+/** 個人-更新使用者資料(舊的-包含檔案上傳) */
+// router.patch(
+//   "/own/:id",
+//   authorization,
+//   [validateEmail, validateAccount],
+//   uploadFile.single("avatarFile"),
+//   userController.updateUserData
+// );
 
 /** 個人-修改(背景)深色模式 */
 router.patch("/own/theme/:id", authorization, userController.setDarkMode);

@@ -215,25 +215,11 @@ const userController = {
       name,
       account,
       bio,
+      avatar,
       language,
       emailPrompt,
       mobilePrompt,
-      removeAvatar,
     } = req.body;
-    const avatarFile = req.file || {};
-    const filePaths =
-      isEmpty(avatarFile) || removeAvatar === "true"
-        ? null
-        : await imgurFileHandler(avatarFile); // imgur圖片檔網址(路徑)
-
-    let variables = { email, name, account, bio };
-    if (removeAvatar === "true" || !isEmpty(filePaths)) {
-      // 有更新或移除頭貼再加入filePaths
-      variables = {
-        ...variables,
-        avatar: filePaths,
-      };
-    }
 
     try {
       if (email) {
@@ -250,7 +236,7 @@ const userController = {
       // 更新User Info
       const updateUser = await User.findByIdAndUpdate(
         req.params.id,
-        variables,
+        { email, name, account, bio, avatar },
         { new: true } // true 代表會回傳更新後的資料
       )
         .select({ password: 0 })
@@ -262,11 +248,7 @@ const userController = {
       // 更新User Setting
       const updateUserSetting = await UserSetting.findOneAndUpdate(
         { user: req.params.id },
-        {
-          language,
-          emailPrompt: emailPrompt === "true",
-          mobilePrompt: mobilePrompt === "true",
-        },
+        { language, emailPrompt, mobilePrompt },
         { new: true }
       ).lean();
 
@@ -276,6 +258,75 @@ const userController = {
       return res.status(400).json({ message: error.message });
     }
   },
+  /** 個人-更新使用者資料(舊的-包含檔案上傳) */
+  // updateUserData: async (req, res) => {
+  //   const userId = req.params.id;
+  //   const {
+  //     email,
+  //     name,
+  //     account,
+  //     bio,
+  //     language,
+  //     emailPrompt,
+  //     mobilePrompt,
+  //     removeAvatar,
+  //   } = req.body;
+  //   const avatarFile = req.file || {};
+  //   const filePaths =
+  //     isEmpty(avatarFile) || removeAvatar === "true"
+  //       ? null
+  //       : await imgurFileHandler(avatarFile); // imgur圖片檔網址(路徑)
+
+  //   let variables = { email, name, account, bio };
+  //   if (removeAvatar === "true" || !isEmpty(filePaths)) {
+  //     // 有更新或移除頭貼再加入filePaths
+  //     variables = {
+  //       ...variables,
+  //       avatar: filePaths,
+  //     };
+  //   }
+
+  //   try {
+  //     if (email) {
+  //       const checkResult = await emailExisting(email, userId);
+  //       if (checkResult)
+  //         return res.status(401).json({ message: "該Email已存在！" });
+  //     }
+  //     if (account) {
+  //       const checkResult = await accountExisting(account, userId);
+  //       if (checkResult)
+  //         return res.status(401).json({ message: "該帳號名稱已存在！" });
+  //     }
+
+  //     // 更新User Info
+  //     const updateUser = await User.findByIdAndUpdate(
+  //       req.params.id,
+  //       variables,
+  //       { new: true } // true 代表會回傳更新後的資料
+  //     )
+  //       .select({ password: 0 })
+  //       .lean();
+
+  //     if (isEmpty(updateUser))
+  //       return res.status(404).json({ message: "user not found" });
+
+  //     // 更新User Setting
+  //     const updateUserSetting = await UserSetting.findOneAndUpdate(
+  //       { user: req.params.id },
+  //       {
+  //         language,
+  //         emailPrompt: emailPrompt === "true",
+  //         mobilePrompt: mobilePrompt === "true",
+  //       },
+  //       { new: true }
+  //     ).lean();
+
+  //     const userData = { ...updateUser, ...updateUserSetting };
+  //     return res.status(200).json(userData);
+  //   } catch (error) {
+  //     return res.status(400).json({ message: error.message });
+  //   }
+  // },
   /** 個人-(修改)深色模式 */
   setDarkMode: async (req, res) => {
     const { theme } = req.body;
