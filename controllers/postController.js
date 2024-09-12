@@ -1,6 +1,6 @@
 const Post = require("../models/post");
 const moment = require("moment-timezone");
-const { imgurFileHandler } = require("../middleware/fileUtils");
+const { cloudinaryHandler } = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
 const UserSetting = require("../models/userSetting");
 
@@ -181,16 +181,22 @@ const postController = {
   createPost: async (req, res) => {
     const { author, content, status, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    const postImage = req.file || {};
-    const filePath = !isEmpty(postImage)
-      ? await imgurFileHandler(postImage)
-      : null; // imgur圖片檔網址(路徑)
+    let imagePath = "";
+    if (req.file) {
+      await cloudinaryHandler(req) // upload image to cloudinary
+        .then((image) => {
+          imagePath = image.secure_url;
+        })
+        .catch((err) => {
+          return res.status(500).json({ error: err });
+        });
+    }
 
     try {
       const newPost = await Post.create({
         author,
         content,
-        image: filePath,
+        image: imagePath,
         status: parseInt(status),
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(), // 轉換時區時間
@@ -203,25 +209,27 @@ const postController = {
 
   /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
-    const { postId, content, status, hashTags, imagePath } = req.body;
+    const { postId, content, status, image, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     const postImage = req.file || {};
-    const filePath = !isEmpty(postImage)
-      ? await imgurFileHandler(postImage)
-      : null; // imgur圖片檔網址(路徑)
+    let imagePath = image;
+    if (req.file) {
+      await cloudinaryHandler(req) // upload image to cloudinary
+        .then((image) => {
+          imagePath = image.secure_url;
+        })
+        .catch((err) => {
+          return res.status(500).json({ error: err });
+        });
+    }
 
     let variable = {
       content,
+      image: imagePath,
       status: parseInt(status),
       hashTags: hashTagArr,
       editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
     };
-
-    if (filePath) {
-      variable = { ...variable, image: filePath }; // filePath沒值則不更新image
-    } else {
-      variable = { ...variable, image: imagePath }; // imagePath沒值表是刪除image
-    }
 
     try {
       const upadtedPost = await Post.findByIdAndUpdate(postId, variable, {
