@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { authorization } = require("../../middleware/auth");
-const { uploadFile } = require("../../middleware/fileUtils");
+const { uploadFile, uploadMulter } = require("../../middleware/fileUtils");
 const userController = require("../../controllers/userController");
 const {
   validateEmail,
@@ -28,6 +28,7 @@ router.patch(
   "/own/:id",
   authorization,
   [validateEmail, validateAccount],
+  uploadMulter,
   userController.updateUserData
 );
 

@@ -1,7 +1,7 @@
 const { isEmpty } = require("lodash");
 const User = require("../models/user");
 const UserSetting = require("../models/userSetting");
-const { imgurFileHandler } = require("../middleware/fileUtils");
+const { imgurFileHandler, cloudinaryHandler } = require("../middleware/fileUtils");
 const {
   emailExisting,
   accountExisting,
@@ -220,6 +220,16 @@ const userController = {
       emailPrompt,
       mobilePrompt,
     } = req.body;
+    let avatarPath = avatar;
+    if (req.file) {
+      await cloudinaryHandler(req)  // upload avatar to cloudinary
+      .then((image) => {
+        avatarPath = image.secure_url;
+      })
+      .catch((err) => {
+        return res.status(500).json({ error: err });
+      });
+    }
 
     try {
       if (email) {
@@ -236,7 +246,7 @@ const userController = {
       // 更新User Info
       const updateUser = await User.findByIdAndUpdate(
         req.params.id,
-        { email, name, account, bio, avatar },
+        { email, name, account, bio, avatar:avatarPath },
         { new: true } // true 代表會回傳更新後的資料
       )
         .select({ password: 0 })
