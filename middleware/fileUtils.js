@@ -1,6 +1,8 @@
 const imgur = require("imgur");
 const multer = require("multer");
 const sharp = require("sharp");
+const cloudinary = require("cloudinary");
+const streamifier = require("streamifier");
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 
@@ -19,7 +21,7 @@ const uploadFile = multer({
       return cb(new Error("image only"));
     }
     cb(null, true); // 如果檔案符合標準，則接受上傳
-  }
+  },
 });
 
 /** 處理圖檔上傳至imgur */
@@ -30,7 +32,7 @@ const imgurFileHandler = async (file) => {
     height: 240,
     fit: "cover",
     position: sharp.strategy.attention,
-  }
+  };
   const buffer = await sharp(file.path).resize(resizeOptions).toBuffer();
   const base64 = buffer.toString("base64");
   const img = await imgur.uploadBase64(base64);
@@ -44,9 +46,9 @@ const uploadMulter = multer({
   },
   fileFilter: function (req, file, cb) {
     let ext = path.extname(file.originalname);
-    if (ext !== '.jpg' && ext !== '.jpeg' && ext !== '.png' && ext !== '.gif') {
+    if (ext !== ".jpg" && ext !== ".jpeg" && ext !== ".png" && ext !== ".gif") {
       const error = new Error(
-        '圖片檔案格式不符，請上傳 jpg / jpeg / png / gif 檔案'
+        "圖片檔案格式不符，請上傳 jpg / jpeg / png / gif 檔案"
       );
       error.statusCode = 400;
       error.isOperational = true;
@@ -54,7 +56,7 @@ const uploadMulter = multer({
     }
     cb(null, true);
   },
-}).single('image'); //只接收 formdata 爲 'image' 的欄位
+}).single("image"); //只接收 formdata 爲 'image' 的欄位
 
 /** 處理圖檔上傳至cloudinary */
 const cloudinaryHandler = async (req) => {
@@ -71,6 +73,11 @@ const cloudinaryHandler = async (req) => {
 
     streamifier.createReadStream(req.file.buffer).pipe(cld_upload_stream);
   });
-}
+};
 
-module.exports = { uploadFile, imgurFileHandler, uploadMulter, cloudinaryHandler };
+module.exports = {
+  uploadFile,
+  imgurFileHandler,
+  uploadMulter,
+  cloudinaryHandler,
+};
