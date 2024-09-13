@@ -1,6 +1,6 @@
 const Post = require("../models/post");
 const moment = require("moment-timezone");
-const { cloudinaryHandler } = require("../middleware/fileUtils");
+const { cloudinaryUpload, cloudinaryUpdate } = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
 const UserSetting = require("../models/userSetting");
 
@@ -181,10 +181,12 @@ const postController = {
   createPost: async (req, res) => {
     const { author, content, status, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    let imagePath = "";
+    let publicId = ''; // cloudinary的 public_id 後續再做圖片編輯或刪除時用的
+    let imagePath = '';
     if (req.file) {
-      await cloudinaryHandler(req) // upload image to cloudinary
+      await cloudinaryUpload(req) // upload image to cloudinary
         .then((image) => {
+          publicId = image.public_id;
           imagePath = image.secure_url;
         })
         .catch((err) => {
@@ -197,6 +199,7 @@ const postController = {
         author,
         content,
         image: imagePath,
+        imageId: publicId,
         status: parseInt(status),
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(), // 轉換時區時間
@@ -209,23 +212,39 @@ const postController = {
 
   /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
-    const { postId, content, status, image, hashTags } = req.body;
+    const { postId, content, status, image, imageId, removeImage, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    const postImage = req.file || {};
+    let publicId = imageId;
     let imagePath = image;
     if (req.file) {
-      await cloudinaryHandler(req) // upload image to cloudinary
-        .then((image) => {
-          imagePath = image.secure_url;
-        })
-        .catch((err) => {
-          return res.status(500).json({ error: err });
+      if(isEmpty(publicId)) {
+        await cloudinaryUpload(req) // upload image to cloudinary
+          .then((image) => {
+            publicId = image.public_id;
+            imagePath = image.secure_url;
+          })
+          .catch((err) => {
+            return res.status(500).json({ error: err });
+          });
+      } else {
+        await cloudinaryUpdate(publicId) // update avatar to cloudinary
+        .then((image) => avatarPath = image.secure_url)
+        .chatch((err) => {
+          return res.status(500).json({error: err});
         });
+      }
+    }
+
+    if (removeImage === "true") {
+      await cloudinaryRemove(publicId);
+      imagePath = '';
+      publicId = ''
     }
 
     let variable = {
       content,
       image: imagePath,
+      imageId: publicId,
       status: parseInt(status),
       hashTags: hashTagArr,
       editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),

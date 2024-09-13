@@ -3,13 +3,14 @@ const multer = require("multer");
 const sharp = require("sharp");
 const cloudinary = require("cloudinary");
 const streamifier = require("streamifier");
+const path = require('path');
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_CLIENT_ID,
+  api_secret: process.env.CLOUDINARY_SECRET,
 });
 
 /** 處理檔案上傳 */
@@ -56,10 +57,10 @@ const uploadMulter = multer({
     }
     cb(null, true);
   },
-}).single("image"); //只接收 formdata 爲 'image' 的欄位
+}).single("imageFile"); //只接收 formdata 爲 'imageFile' 的欄位
 
-/** 處理圖檔上傳至cloudinary */
-const cloudinaryHandler = async (req) => {
+/** 上傳圖檔 (cloudinary) */
+const cloudinaryUpload = async (req) => {
   return new Promise((resolve, reject) => {
     let cld_upload_stream = cloudinary.uploader.upload_stream(
       (error, result) => {
@@ -75,9 +76,53 @@ const cloudinaryHandler = async (req) => {
   });
 };
 
+/** 更新圖片 (cloudinary) */
+const cloudinaryUpdate = async (req, publicId) => {
+  return new Promise((resolve, reject) => {
+    let update_stream = cloudinary.uploader.upload_stream(
+      {
+        public_id: publicId,
+        overwrite: true,
+        invalidate: true
+      },
+      (error, result) => {
+        if (result) {
+          resolve(result);
+        } else {
+          reject(error);
+        }
+      }
+    );
+
+    streamifier.createReadStream(req.file.buffer).pipe(update_stream);
+  });
+};
+
+/** 刪除圖片 (cloudinary) */
+const cloudinaryRemove = async (req) => {
+  const { public_id } = req.body;
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.destroy(public_id, 
+      {
+        type: 'upload',
+        invalidate: true
+      },
+      (error, result) => {
+        if (result) {
+          resolve(result);
+        } else {
+          reject(error);
+        }
+      }
+    );
+  });
+};
+
 module.exports = {
   uploadFile,
   imgurFileHandler,
   uploadMulter,
-  cloudinaryHandler,
+  cloudinaryUpload,
+  cloudinaryUpdate,
+  cloudinaryRemove,
 };

@@ -1,7 +1,7 @@
 const { isEmpty } = require("lodash");
 const User = require("../models/user");
 const UserSetting = require("../models/userSetting");
-const { imgurFileHandler, cloudinaryHandler } = require("../middleware/fileUtils");
+const { imgurFileHandler, cloudinaryUpload, cloudinaryUpdate, cloudinaryRemove } = require("../middleware/fileUtils");
 const {
   emailExisting,
   accountExisting,
@@ -216,22 +216,34 @@ const userController = {
       account,
       bio,
       avatar,
+      avatarId,
+      removeAvatar, // true 表示要移除avatar
       language,
       emailPrompt,
       mobilePrompt,
     } = req.body;
-    let avatarPath = avatar;
-    if (req.file) {
-      await cloudinaryHandler(req)  // upload avatar to cloudinary
-      .then((image) => {
-        avatarPath = image.secure_url;
-      })
-      .catch((err) => {
-        return res.status(500).json({ error: err });
-      });
-    }
-
+    let avatarPath = avatar; // 大頭照url
+    let publicId = avatarId; // 大頭照id
     try {
+      if (req.file) {
+        if (isEmpty(publicId)) {
+          const uploadResult = await cloudinaryUpload(req)
+          console.log("uploadRes = ", uploadResult);
+          publicId = uploadResult.public_id;
+          avatarPath = uploadResult.secure_url;
+        } else {
+          const updateResult = await cloudinaryUpdate(req, publicId)
+          console.log("updateRes = ", updateResult);
+          avatarPath = updateResult.secure_url;
+        }
+      }
+      
+      if (removeAvatar === "true") {
+        await cloudinaryRemove(avatarId);
+        avatarPath = '';
+        publicId = ''
+      }
+
       if (email) {
         const checkResult = await emailExisting(email, userId);
         if (checkResult)
@@ -246,7 +258,14 @@ const userController = {
       // 更新User Info
       const updateUser = await User.findByIdAndUpdate(
         req.params.id,
-        { email, name, account, bio, avatar:avatarPath },
+        { 
+          email,
+          name,
+          account,
+          bio,
+          avatar: avatarPath,
+          avatarId: publicId
+         },
         { new: true } // true 代表會回傳更新後的資料
       )
         .select({ password: 0 })
@@ -258,7 +277,11 @@ const userController = {
       // 更新User Setting
       const updateUserSetting = await UserSetting.findOneAndUpdate(
         { user: req.params.id },
-        { language, emailPrompt, mobilePrompt },
+        {
+          language,
+          emailPrompt: emailPrompt === "true",
+          mobilePrompt: mobilePrompt === "true",
+        },
         { new: true }
       ).lean();
 

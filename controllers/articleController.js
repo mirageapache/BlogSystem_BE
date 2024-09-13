@@ -197,7 +197,7 @@ const articleController = {
     } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     if (req.file) {
-      await cloudinaryHandler(req) // upload avatar to cloudinary
+      await cloudinaryUpload(req) // upload avatar to cloudinary
         .then((image) => {
           avatarPath = image.secure_url;
         })
