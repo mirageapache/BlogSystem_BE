@@ -1,9 +1,9 @@
 const imgur = require("imgur");
 const multer = require("multer");
 const sharp = require("sharp");
-const cloudinary = require("cloudinary");
+const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
-const path = require('path');
+const path = require("path");
 
 imgur.setClientId(process.env.IMGUR_CLIENT_ID);
 
@@ -43,7 +43,7 @@ const imgurFileHandler = async (file) => {
 /** 上傳前置處理 */
 const uploadMulter = multer({
   limits: {
-    fileSize: 83886080, //最大 10mb
+    fileSize: 10485760, //最大 10mb
   },
   fileFilter: function (req, file, cb) {
     let ext = path.extname(file.originalname);
@@ -61,51 +61,55 @@ const uploadMulter = multer({
 
 /** 上傳圖檔 (cloudinary) */
 const cloudinaryUpload = async (req) => {
-  return new Promise((resolve, reject) => {
-    let cld_upload_stream = cloudinary.uploader.upload_stream(
-      (error, result) => {
-        if (result) {
-          resolve(result);
-        } else {
-          reject(error);
-        }
-      }
-    );
+  // return new Promise((resolve, reject) => {
+  //   let cld_upload_stream = cloudinary.uploader.upload_stream(
+  //     (error, result) => {
+  //       if (result) {
+  //         console.log(result);
+  //         resolve(result);
+  //       } else {
+  //         console.lot(error);
+  //         reject(error);
+  //       }
+  //     }
+  //   );
 
-    streamifier.createReadStream(req.file.buffer).pipe(cld_upload_stream);
-  });
+  //   streamifier.createReadStream(req.file.buffer).pipe(cld_upload_stream);
+  // });
+
+  // Upload an image
+  const uploadResult = await cloudinary.uploader
+    .upload(req.file)
+    .catch((error) => {
+      console.log(error);
+    });
+
+  console.log(uploadResult);
 };
 
 /** 更新圖片 (cloudinary) */
-const cloudinaryUpdate = async (req, publicId) => {
-  return new Promise((resolve, reject) => {
-    let update_stream = cloudinary.uploader.upload_stream(
-      {
-        public_id: publicId,
-        overwrite: true,
-        invalidate: true
-      },
-      (error, result) => {
-        if (result) {
-          resolve(result);
-        } else {
-          reject(error);
-        }
-      }
-    );
-
-    streamifier.createReadStream(req.file.buffer).pipe(update_stream);
-  });
+const cloudinaryUpdate = async (imagePath, publicId) => {
+  console.log("path = ", imagePath);
+  const uploadResult = await cloudinary.uploader
+    .upload(`temp/${imagePath}`, {
+      public_id: publicId,
+    })
+    .catch((error) => {
+      console.log(error);
+    });
+  return uploadResult;
+  // console.log("result = ", uploadResult);
 };
 
 /** 刪除圖片 (cloudinary) */
 const cloudinaryRemove = async (req) => {
   const { public_id } = req.body;
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.destroy(public_id, 
+    cloudinary.uploader.destroy(
+      public_id,
       {
-        type: 'upload',
-        invalidate: true
+        type: "upload",
+        invalidate: true,
       },
       (error, result) => {
         if (result) {

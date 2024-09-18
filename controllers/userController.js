@@ -1,7 +1,12 @@
 const { isEmpty } = require("lodash");
 const User = require("../models/user");
 const UserSetting = require("../models/userSetting");
-const { imgurFileHandler, cloudinaryUpload, cloudinaryUpdate, cloudinaryRemove } = require("../middleware/fileUtils");
+const {
+  imgurFileHandler,
+  cloudinaryUpload,
+  cloudinaryUpdate,
+  cloudinaryRemove,
+} = require("../middleware/fileUtils");
 const {
   emailExisting,
   accountExisting,
@@ -224,24 +229,26 @@ const userController = {
     } = req.body;
     let avatarPath = avatar; // 大頭照url
     let publicId = avatarId; // 大頭照id
+    console.log("file = ", req.body.imageName);
     try {
       if (req.file) {
         if (isEmpty(publicId)) {
-          const uploadResult = await cloudinaryUpload(req)
-          console.log("uploadRes = ", uploadResult);
+          const uploadResult = await cloudinaryUpload(req.body.imageName);
           publicId = uploadResult.public_id;
           avatarPath = uploadResult.secure_url;
         } else {
-          const updateResult = await cloudinaryUpdate(req, publicId)
-          console.log("updateRes = ", updateResult);
+          const updateResult = await cloudinaryUpdate(
+            req.body.imageName,
+            publicId
+          );
           avatarPath = updateResult.secure_url;
         }
       }
-      
+
       if (removeAvatar === "true") {
         await cloudinaryRemove(avatarId);
-        avatarPath = '';
-        publicId = ''
+        avatarPath = "";
+        publicId = "";
       }
 
       if (email) {
@@ -258,14 +265,14 @@ const userController = {
       // 更新User Info
       const updateUser = await User.findByIdAndUpdate(
         req.params.id,
-        { 
+        {
           email,
           name,
           account,
           bio,
           avatar: avatarPath,
-          avatarId: publicId
-         },
+          avatarId: publicId,
+        },
         { new: true } // true 代表會回傳更新後的資料
       )
         .select({ password: 0 })
