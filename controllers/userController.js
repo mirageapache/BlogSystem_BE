@@ -229,18 +229,18 @@ const userController = {
     } = req.body;
     let avatarPath = avatar; // 大頭照url
     let publicId = avatarId; // 大頭照id
-    console.log("file = ", req.body.imageName);
     try {
       if (req.file) {
         if (isEmpty(publicId)) {
-          const uploadResult = await cloudinaryUpload(req.body.imageName);
+          const uploadResult = await cloudinaryUpload(req);
           publicId = uploadResult.public_id;
           avatarPath = uploadResult.secure_url;
         } else {
           const updateResult = await cloudinaryUpdate(
-            req.body.imageName,
+            req,
             publicId
           );
+          console.log("uploadResult = ", updateResult);
           avatarPath = updateResult.secure_url;
         }
       }
