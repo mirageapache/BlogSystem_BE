@@ -44,7 +44,7 @@ const imgurFileHandler = async (file) => {
 const uploadMulter = multer({
   storage: multer.diskStorage({
     destination: function (req, file, cb) {
-      cb(null, 'temp/'); // 檔案將暫時儲存到 temp 資料夾
+      cb(null, "temp/"); // 檔案將暫時儲存到 temp 資料夾
     },
     filename: function (req, file, cb) {
       cb(null, Date.now() + path.extname(file.originalname)); // 設定檔案名稱
@@ -68,54 +68,34 @@ const uploadMulter = multer({
 }).single("imageFile"); //只接收 formdata 爲 'imageFile' 的欄位
 
 /** 上傳圖檔 (cloudinary) */
-const cloudinaryUpload = async (req) => { 
+const cloudinaryUpload = async (req) => {
   const uploadResult = await cloudinary.uploader
     .upload(req.file.path)
     .catch((error) => {
-      console.log(error);
+      return error;
     });
-
-  console.log(uploadResult);
-
-  // return new Promise((resolve, reject) => {
-  //   let cld_upload_stream = cloudinary.uploader.upload_stream(
-  //     (error, result) => {
-  //       if (result) {
-  //         console.log(result);
-  //         resolve(result);
-  //       } else {
-  //         console.lot(error);
-  //         reject(error);
-  //       }
-  //     }
-  //   );
-
-  //   streamifier.createReadStream(req.file.buffer).pipe(cld_upload_stream);
-  // });
+  return uploadResult;
 };
 
 /** 更新圖片 (cloudinary) */
 const cloudinaryUpdate = async (req, publicId) => {
   const imagePath = req.file.path;
-  console.log("path = ", imagePath);
   const uploadResult = await cloudinary.uploader
     .upload(imagePath, {
       public_id: publicId,
       overwrite: true,
     })
     .catch((error) => {
-      console.log(error);
+      return error;
     });
-  console.log(uploadResult);
   return uploadResult;
 };
 
 /** 刪除圖片 (cloudinary) */
-const cloudinaryRemove = async (req) => {
-  const { public_id } = req.body;
+const cloudinaryRemove = async (publicId) => {
   return new Promise((resolve, reject) => {
     cloudinary.uploader.destroy(
-      public_id,
+      publicId,
       {
         type: "upload",
         invalidate: true,

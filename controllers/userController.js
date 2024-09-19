@@ -236,17 +236,13 @@ const userController = {
           publicId = uploadResult.public_id;
           avatarPath = uploadResult.secure_url;
         } else {
-          const updateResult = await cloudinaryUpdate(
-            req,
-            publicId
-          );
-          console.log("uploadResult = ", updateResult);
+          const updateResult = await cloudinaryUpdate(req, publicId);
           avatarPath = updateResult.secure_url;
         }
       }
 
       if (removeAvatar === "true") {
-        await cloudinaryRemove(avatarId);
+        await cloudinaryRemove(publicId);
         avatarPath = "";
         publicId = "";
       }
