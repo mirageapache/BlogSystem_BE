@@ -12,6 +12,7 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_CLIENT_ID,
   api_secret: process.env.CLOUDINARY_SECRET,
 });
+const folderPath = 'blogSystem/images'; // 指定cloudinary資料夾
 
 /** 處理檔案上傳 */
 const uploadFile = multer({
@@ -70,7 +71,9 @@ const uploadMulter = multer({
 /** 上傳圖檔 (cloudinary) */
 const cloudinaryUpload = async (req) => {
   const uploadResult = await cloudinary.uploader
-    .upload(req.file.path)
+    .upload(req.file.path, {
+      folder: folderPath,
+    })
     .catch((error) => {
       return error;
     });
@@ -84,6 +87,7 @@ const cloudinaryUpdate = async (req, publicId) => {
     .upload(imagePath, {
       public_id: publicId,
       overwrite: true,
+      folder: folderPath,
     })
     .catch((error) => {
       return error;
@@ -99,6 +103,7 @@ const cloudinaryRemove = async (publicId) => {
       {
         type: "upload",
         invalidate: true,
+        folder: folderPath,
       },
       (error, result) => {
         if (result) {

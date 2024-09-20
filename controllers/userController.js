@@ -221,7 +221,7 @@ const userController = {
       account,
       bio,
       avatar,
-      avatarId,
+      avatarId, // pulibic_id
       removeAvatar, // true 表示要移除avatar
       language,
       emailPrompt,
