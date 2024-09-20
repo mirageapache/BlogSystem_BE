@@ -1,6 +1,6 @@
 const Post = require("../models/post");
 const moment = require("moment-timezone");
-const { cloudinaryUpload, cloudinaryUpdate } = require("../middleware/fileUtils");
+const { cloudinaryUpload, cloudinaryUpdate, cloudinaryRemove } = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
 const UserSetting = require("../models/userSetting");
 
@@ -183,18 +183,14 @@ const postController = {
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     let publicId = ''; // cloudinary的 public_id 後續再做圖片編輯或刪除時用的
     let imagePath = '';
-    if (req.file) {
-      await cloudinaryUpload(req) // upload image to cloudinary
-        .then((image) => {
-          publicId = image.public_id;
-          imagePath = image.secure_url;
-        })
-        .catch((err) => {
-          return res.status(500).json({ error: err });
-        });
-    }
 
     try {
+      if (req.file) {
+        const uploadResult = await cloudinaryUpload(req); // upload image to cloudinary
+          publicId = uploadResult.public_id;
+          imagePath = uploadResult.secure_url;
+      }
+
       const newPost = await Post.create({
         author,
         content,
@@ -216,42 +212,34 @@ const postController = {
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     let publicId = imageId;
     let imagePath = image;
-    if (req.file) {
-      if(isEmpty(publicId)) {
-        await cloudinaryUpload(req) // upload image to cloudinary
-          .then((image) => {
-            publicId = image.public_id;
-            imagePath = image.secure_url;
-          })
-          .catch((err) => {
-            return res.status(500).json({ error: err });
-          });
-      } else {
-        await cloudinaryUpdate(publicId) // update avatar to cloudinary
-        .then((image) => avatarPath = image.secure_url)
-        .chatch((err) => {
-          return res.status(500).json({error: err});
-        });
-      }
-    }
-
-    if (removeImage === "true") {
-      await cloudinaryRemove(publicId);
-      imagePath = '';
-      publicId = ''
-    }
-
-    let variable = {
-      content,
-      image: imagePath,
-      imageId: publicId,
-      status: parseInt(status),
-      hashTags: hashTagArr,
-      editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
-    };
 
     try {
-      const upadtedPost = await Post.findByIdAndUpdate(postId, variable, {
+      if (req.file) {
+        if(isEmpty(publicId)) {
+          const uploadResult = await cloudinaryUpload(req) // upload image to cloudinary
+          publicId = uploadResult.public_id;
+          imagePath = uploadResult.secure_url;
+        } else {
+          const uploadResult = await cloudinaryUpdate(req, publicId) // update avatar to cloudinary
+          avatarPath = uploadResult.secure_url
+        }
+      }
+
+      if (removeImage === "true") {
+        await cloudinaryRemove(publicId);
+        imagePath = '';
+        publicId = ''
+      }
+
+      const upadtedPost = await Post.findByIdAndUpdate(postId,
+        {
+          content,
+          image: imagePath,
+          imageId: publicId,
+          status: parseInt(status),
+          hashTags: hashTagArr,
+          editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
+        }, {
         new: true,
       }).lean();
 
