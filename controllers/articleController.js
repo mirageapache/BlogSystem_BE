@@ -166,10 +166,6 @@ const articleController = {
   createArticle: async (req, res) => {
     const { userId, title, content, subject = "", hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    const articleImage = req.file || {};
-    const filePath = !isEmpty(articleImage)
-      ? await imgurFileHandler(articleImage)
-      : null; // imgur圖片檔網址(路徑)
 
     try {
       const newArticle = await Article.create({
@@ -200,10 +196,15 @@ const articleController = {
       hashTags,
     } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    const articleImage = req.file || {};
-    const filePath = !isEmpty(articleImage)
-      ? await imgurFileHandler(articleImage)
-      : null; // imgur圖片檔網址(路徑)
+    if (req.file) {
+      await cloudinaryUpload(req) // upload avatar to cloudinary
+        .then((image) => {
+          avatarPath = image.secure_url;
+        })
+        .catch((err) => {
+          return res.status(500).json({ error: err });
+        });
+    }
 
     try {
       const updatedArticle = await Article.findByIdAndUpdate(

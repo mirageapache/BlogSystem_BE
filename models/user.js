@@ -28,6 +28,10 @@ const UserSchema = new Schema({
     type: String,
     default: "",
   },
+  /** 大頭照Id - pubilc_id of cloudinary */
+  avatarId: {
+    type: String,
+  },
   /** 背景顏色 */
   bgColor: {
     type: String,

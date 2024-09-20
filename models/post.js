@@ -14,8 +14,12 @@ const PostSchema = new Schema({
     type: String,
     required: true,
   },
-  /** 圖片 */
+  /** 圖片 - url */
   image: {
+    type: String,
+  },
+  /** 圖片id - public_id of cloudinary */
+  imageId: {
     type: String,
   },
   /** 狀態

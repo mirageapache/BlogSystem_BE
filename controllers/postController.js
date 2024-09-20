@@ -1,6 +1,6 @@
 const Post = require("../models/post");
 const moment = require("moment-timezone");
-const { imgurFileHandler } = require("../middleware/fileUtils");
+const { cloudinaryUpload, cloudinaryUpdate, cloudinaryRemove } = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
 const UserSetting = require("../models/userSetting");
 
@@ -181,16 +181,21 @@ const postController = {
   createPost: async (req, res) => {
     const { author, content, status, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    const postImage = req.file || {};
-    const filePath = !isEmpty(postImage)
-      ? await imgurFileHandler(postImage)
-      : null; // imgur圖片檔網址(路徑)
+    let publicId = ''; // cloudinary的 public_id 後續再做圖片編輯或刪除時用的
+    let imagePath = '';
 
     try {
+      if (req.file) {
+        const uploadResult = await cloudinaryUpload(req); // upload image to cloudinary
+          publicId = uploadResult.public_id;
+          imagePath = uploadResult.secure_url;
+      }
+
       const newPost = await Post.create({
         author,
         content,
-        image: filePath,
+        image: imagePath,
+        imageId: publicId,
         status: parseInt(status),
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(), // 轉換時區時間
@@ -203,28 +208,38 @@ const postController = {
 
   /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
-    const { postId, content, status, hashTags, imagePath } = req.body;
+    const { postId, content, status, image, imageId, removeImage, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    const postImage = req.file || {};
-    const filePath = !isEmpty(postImage)
-      ? await imgurFileHandler(postImage)
-      : null; // imgur圖片檔網址(路徑)
-
-    let variable = {
-      content,
-      status: parseInt(status),
-      hashTags: hashTagArr,
-      editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
-    };
-
-    if (filePath) {
-      variable = { ...variable, image: filePath }; // filePath沒值則不更新image
-    } else {
-      variable = { ...variable, image: imagePath }; // imagePath沒值表是刪除image
-    }
+    let publicId = imageId;
+    let imagePath = image;
 
     try {
-      const upadtedPost = await Post.findByIdAndUpdate(postId, variable, {
+      if (req.file) {
+        if(isEmpty(publicId)) {
+          const uploadResult = await cloudinaryUpload(req) // upload image to cloudinary
+          publicId = uploadResult.public_id;
+          imagePath = uploadResult.secure_url;
+        } else {
+          const uploadResult = await cloudinaryUpdate(req, publicId) // update avatar to cloudinary
+          avatarPath = uploadResult.secure_url
+        }
+      }
+
+      if (removeImage === "true") {
+        await cloudinaryRemove(publicId);
+        imagePath = '';
+        publicId = ''
+      }
+
+      const upadtedPost = await Post.findByIdAndUpdate(postId,
+        {
+          content,
+          image: imagePath,
+          imageId: publicId,
+          status: parseInt(status),
+          hashTags: hashTagArr,
+          editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
+        }, {
         new: true,
       }).lean();
 
