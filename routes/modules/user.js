@@ -1,51 +1,50 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../../models/user");
-const { authenticate } = require("../../middleware/auth");
+const { authorization } = require("../../middleware/auth");
+const { uploadFile, uploadMulter } = require("../../middleware/fileUtils");
+const userController = require("../../controllers/userController");
+const {
+  validateEmail,
+  validateAccount,
+} = require("../../middleware/validator/userValidation");
 
 /** 取得所有使用者 */
-router.get("/", authenticate, async (req, res) => {
-  try {
-    const users = await User.find().select("-password").lean();
-    return res.json(users);
-  } catch (error) {
-    return res.status(400).json({ message: error.message });
-  }
-});
+router.get("/", userController.getAllUserList);
 
-/** 取得特定使用者 */
-router.get("/:id", authenticate, async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select("-password").lean(); // select 出來的資料排除 password 欄位
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    return res.json(user);
-  } catch (error) {
-    return res.status(400).json({ message: error.message });
-  }
-});
+/** 取得搜尋使用者清單(含追蹤資料) */
+router.post("/getSearchUserList", userController.getSearchUserList);
 
-/** 更新使用者資料 */
-router.patch("/:id", authenticate, async (req, res) => {
-  try {
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    }).select("-password").lean();
-    return res.json(updatedUser);
-  } catch (error) {
-    return res.status(400).json({ message: error.message });
-  }
-});
+/** 取得推薦使用者清單(含追蹤資料) */
+router.post("/getRecommendUserList", userController.getRecommendUserList);
 
-/** 刪除使用者 */
-router.delete("/:id", authenticate, async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.params.id);
-    return res.json({ message: "User deleted" });
-  } catch (error) {
-    return res.status(400).json({ message: error.message });
-  }
-});
+/** 取得一般使用者資料 */
+router.post("/:id", userController.getOtherUserData);
+
+/** 個人-取得使用者資料 */
+router.post("/own/:id", authorization, userController.getOwnUserData);
+
+/** 個人-更新使用者資料 */
+router.patch(
+  "/own/:id",
+  authorization,
+  [validateEmail, validateAccount],
+  uploadMulter,
+  userController.updateUserData
+);
+
+/** 個人-更新使用者資料(舊的-包含檔案上傳) */
+// router.patch(
+//   "/own/:id",
+//   authorization,
+//   [validateEmail, validateAccount],
+//   uploadFile.single("avatarFile"),
+//   userController.updateUserData
+// );
+
+/** 個人-修改(背景)深色模式 */
+router.patch("/own/theme/:id", authorization, userController.setDarkMode);
+
+/** 個人-刪除使用者 */
+router.delete("/own/:id", authorization, userController.deleteUser);
 
 module.exports = router;
