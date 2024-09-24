@@ -1,4 +1,10 @@
-const app = require('./app');
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
 const port = process.env.PORT || 3000;
 const routes = require("./routes");
 
