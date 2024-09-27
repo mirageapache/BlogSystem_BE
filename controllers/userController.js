@@ -8,7 +8,7 @@ const {
   cloudinaryRemove,
 } = require("../middleware/fileUtils");
 const {
-  emailExisting,
+  emailExisted,
   accountExisting,
 } = require("../middleware/validator/userValidation");
 const Follow = require("../models/follow");
@@ -253,7 +253,7 @@ const userController = {
       }
 
       if (email) {
-        const checkResult = await emailExisting(email, userId);
+        const checkResult = await emailExisted(email, userId);
         if (checkResult)
           return res.status(401).json({ message: "該Email已存在！" });
       }
@@ -329,7 +329,7 @@ const userController = {
 
   //   try {
   //     if (email) {
-  //       const checkResult = await emailExisting(email, userId);
+  //       const checkResult = await emailExisted(email, userId);
   //       if (checkResult)
   //         return res.status(401).json({ message: "該Email已存在！" });
   //     }
