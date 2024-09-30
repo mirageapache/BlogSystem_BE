@@ -14,6 +14,12 @@ router.post("/signup", [validateEmail, validatePassword], authController.signUp)
 /** 登入 */
 router.post("/signin", [validateEmail, validatePassword], authController.signIn);
 
+/** 找回密碼 */
+router.post("/findpwd", [validateEmail], authController.findPassword);
+
+/** 重設密碼 */
+router.post("/resetpwd", [validatePassword], authController.resetPassword);
+
 /** 身分驗證 */
 router.post("/checkAuth", authorization, authController.checkAuth);
 

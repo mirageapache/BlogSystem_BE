@@ -16,7 +16,7 @@ const validateEmail = [
 ];
 
 /** 檢查 email 是否已存在 */
-const emailExisting = async (email, userId) => {
+const emailExisted = async (email, userId) => {
   let result = await User.find({ email });
   result = result.filter((res) => res._id.toString() !== userId);
   if (result.length > 0) return true;
@@ -83,7 +83,7 @@ const validateName = [
 
 module.exports = {
   validateEmail,
-  emailExisting,
+  emailExisted,
   validatePassword,
   checkAccountExist,
   validateAccount,

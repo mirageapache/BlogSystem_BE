@@ -8,7 +8,7 @@ const {
   cloudinaryRemove,
 } = require("../middleware/fileUtils");
 const {
-  emailExisting,
+  emailExisted,
   accountExisting,
 } = require("../middleware/validator/userValidation");
 const Follow = require("../models/follow");
@@ -73,7 +73,12 @@ const userController = {
         })
         .lean()
         .exec();
-      if (isEmpty(follows)) return res.status(200).json(users); // 沒有followList(表示未追縱任何人)，則直接回傳userList
+      if (isEmpty(follows))
+        return res.status(200).json({
+          userList: users,
+          nextPage,
+          totalUser: total,
+        }); // 沒有followList(表示未追縱任何人)，則直接回傳userList
 
       // 將追蹤清單轉換為哈希表(Object)
       const followsMap = follows.reduce((acc, follow) => {
@@ -248,7 +253,7 @@ const userController = {
       }
 
       if (email) {
-        const checkResult = await emailExisting(email, userId);
+        const checkResult = await emailExisted(email, userId);
         if (checkResult)
           return res.status(401).json({ message: "該Email已存在！" });
       }
@@ -324,7 +329,7 @@ const userController = {
 
   //   try {
   //     if (email) {
-  //       const checkResult = await emailExisting(email, userId);
+  //       const checkResult = await emailExisted(email, userId);
   //       if (checkResult)
   //         return res.status(401).json({ message: "該Email已存在！" });
   //     }
