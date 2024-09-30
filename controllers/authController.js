@@ -15,6 +15,15 @@ const {
   emailExisted,
 } = require("../middleware/validator/userValidation");
 
+// 設定 nodemailer transport
+const transporter = nodemailer.createTransport({
+  service: "hotmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PWD,
+  },
+});
+
 const loginController = {
   /** 註冊 */
   signUp: async (req, res) => {
@@ -35,8 +44,8 @@ const loginController = {
 
     try {
       // 檢查email是否已存在
-      if (emailExisted(email))
-        return res.status(401).json({ type: "email", message: "Email已存在!" });
+      const checkEmail = await User.findOne({ email }).lean();
+      if (checkEmail) return res.status(404).json({ message: "Email已註冊！" });
 
       const salt = Number.parseInt(process.env.SALT_ROUNDS);
       const hashedPwd = bcrypt.hashSync(password, salt);
@@ -57,7 +66,7 @@ const loginController = {
       // 初始化User追蹤資料
       await Follow.create({
         user: user._id.toString(),
-        following: [],
+        followed: [],
         follower: [],
       });
       // 初始化User設定
@@ -84,9 +93,7 @@ const loginController = {
     try {
       // 確認使用者是否註冊
       const user = await User.findOne({ email }).lean();
-      if (!user) {
-        return res.status(404).json({ message: "Email尚未註冊！" });
-      }
+      if (!user) return res.status(404).json({ message: "Email尚未註冊！" });
 
       // 比對密碼
       const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -128,17 +135,6 @@ const loginController = {
         expiresIn: "10m",
       });
 
-      const transporter = nodemailer.createTransport({
-        service: "hotmail",
-        // host: "smtp-mail.outlook.com",
-        // port: 587,
-        // secure: false, // 使用TLS
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PWD,
-        },
-      });
-
       const resetPasswordLink = `${process.env.FRONTEND_URL}/reset_password/${urlToken}`;
       const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -156,6 +152,7 @@ const loginController = {
       };
 
       await transporter.sendMail(mailOptions);
+      return res.status(200).json({ message: "send mail success" });
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
