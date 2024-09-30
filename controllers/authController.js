@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const moment = require("moment-timezone");
-const { get, isEmpty } = require("lodash");
+const { get, isEmpty, isEqual } = require("lodash");
 const { validationResult } = require("express-validator");
 const nodemailer = require("nodemailer");
 // --- modals ---
@@ -159,7 +159,13 @@ const loginController = {
   },
   /** 重設密碼 */
   resetPassword: async (req, res) => {
-    const { token, password, confirmPassword } = req.body;
+    const tokenString = req.header("Authorization");
+    if (isEmpty(tokenString))
+      return res.status(401).json({ message: "No token provided" });
+    const token = tokenString.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const { password, confirmPassword } = req.body;
 
     if (!isEqual(password, confirmPassword)) {
       return res
@@ -172,15 +178,16 @@ const loginController = {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId);
 
-      if (!user) return res.status(400).json({ message: "用戶不存在" });
+      if (!user) return res.status(400).json({ message: "驗證異常！" });
 
       // 更新用戶密碼
-      user.password = password;
-      await user.save();
+      const salt = Number.parseInt(process.env.SALT_ROUNDS);
+      const hashedPwd = bcrypt.hashSync(password, salt);
+      await User.findByIdAndUpdate(user.id, { password: hashedPwd });
 
       return res.status(200).json({ message: "密碼重設成功" });
     } catch (error) {
-      return res.status(400).json({ message: "重設密碼鏈接無效或已過期" });
+      return res.status(400).json({ message: "重設密碼連接無效或已過期" });
     }
   },
   /** 身分驗證
