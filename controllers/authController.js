@@ -15,15 +15,6 @@ const {
   emailExisted,
 } = require("../middleware/validator/userValidation");
 
-// 設定 nodemailer transport
-const transporter = nodemailer.createTransport({
-  service: "hotmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PWD,
-  },
-});
-
 const loginController = {
   /** 註冊 */
   signUp: async (req, res) => {
@@ -133,6 +124,18 @@ const loginController = {
 
       const urlToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
         expiresIn: "10m",
+      });
+
+      // 設定 nodemailer transport
+      const transporter = nodemailer.createTransport({
+        service: "hotmail",
+        // host: "smtp-mail.outlook.com",
+        // port: 587,
+        // secure: false, // 使用TLS
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PWD,
+        },
       });
 
       const resetPasswordLink = `${process.env.FRONTEND_URL}/reset_password/${urlToken}`;
