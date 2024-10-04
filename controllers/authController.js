@@ -30,7 +30,7 @@ const loginController = {
     // 資料驗證
     const errors = validationResult(req);
     if (!errors.isEmpty())
-      return res.status(401).json({ message: errors.array() });
+      return res.status(400).json({ code: "VALIDATE_ERR", message: errors.array() });
 
     const param = get(req, "body", {});
     const { email, password, confirmPassword } = param;
@@ -38,14 +38,14 @@ const loginController = {
     // 驗證密碼&確認密碼
     if (password !== confirmPassword) {
       return res
-        .status(401)
-        .json({ type: "confrimPassword", message: "密碼與確認密碼不相符！" });
+        .status(400)
+        .json({ code: 'PWD_DIFF', message: "密碼與確認密碼不相符！" });
     }
 
     try {
       // 檢查email是否已存在
       const checkEmail = await User.findOne({ email }).lean();
-      if (checkEmail) return res.status(404).json({ message: "Email已註冊！" });
+      if (checkEmail) return res.status(409).json({ code: "EMAIL_EXISTED", message: "Email已註冊！" });
 
       const salt = Number.parseInt(process.env.SALT_ROUNDS);
       const hashedPwd = bcrypt.hashSync(password, salt);
@@ -77,9 +77,9 @@ const loginController = {
         emailPrompt: true,
         mobilePrompt: false,
       });
-      return res.status(200).json({ message: "success" });
+      return res.status(200).json({ code: "SUCCESS", message: "註冊成功！" });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(500).json({ code: "SERVER_ERR", message: error.message });
     }
   },
   /** 登入 */
@@ -169,7 +169,7 @@ const loginController = {
 
     if (!isEqual(password, confirmPassword)) {
       return res
-        .status(401)
+        .status(400)
         .json({ type: "confrimPassword", message: "密碼與確認密碼不相符！" });
     }
 
@@ -178,7 +178,7 @@ const loginController = {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId);
 
-      if (!user) return res.status(400).json({ message: "驗證異常！" });
+      if (!user) return res.status(401).json({ message: "驗證異常！" });
 
       // 更新用戶密碼
       const salt = Number.parseInt(process.env.SALT_ROUNDS);
