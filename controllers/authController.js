@@ -3,7 +3,8 @@ const bcrypt = require("bcryptjs");
 const moment = require("moment-timezone");
 const { get, isEmpty, isEqual } = require("lodash");
 const { validationResult } = require("express-validator");
-const nodemailer = require("nodemailer");
+const formData = require("form-data");
+const Mailgun = require("mailgun.js");
 // --- modals ---
 const User = require("../models/user");
 const Follow = require("../models/follow");
@@ -14,6 +15,13 @@ const {
   checkAccountExist,
   emailExisted,
 } = require("../middleware/validator/userValidation");
+
+// mailgun setting
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+  username: "ReactBlog",
+  key: process.env.MAILGUN_API_KEY,
+});
 
 const loginController = {
   /** 註冊 */
@@ -121,43 +129,40 @@ const loginController = {
     try {
       const user = await User.findOne({ email }).lean();
       if (!user) return res.status(404).json({ message: "Email輸入錯誤!" });
-
       const urlToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
         expiresIn: "10m",
       });
-
-      // 設定 nodemailer transport
-      const transporter = nodemailer.createTransport({
-        service: "hotmail",
-        // host: "smtp-mail.outlook.com",
-        // port: 587,
-        // secure: false, // 使用TLS
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PWD,
-        },
-      });
-
       const resetPasswordLink = `${process.env.FRONTEND_URL}/reset_password/${urlToken}`;
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: user.email, // 使用者的電子郵件
-        subject: "ReactBlog - 重設您的密碼",
-        html: `
-          <p>你已提出重設密碼的需求，請點擊下方連結來重設密碼</p>
-          <p>提醒你，連結僅10分鐘有效！</p>
-          <a href="${resetPasswordLink}">${resetPasswordLink}</a>
-          <br>
-          <br>
-          <hr>
-          <p>-若你未提出重設密碼要求，請忽略本信件-</p>
-        `,
-      };
 
-      await transporter.sendMail(mailOptions);
-      return res.status(200).json({ message: "send mail success" });
+      // Mailgun 郵件內容
+      mg.messages
+        .create(process.env.MAILGUN_DOMAIN, {
+          from: `ReactBlog <noreply@${process.env.MAILGUN_DOMAIN}>`,
+          to: user.email,
+          subject: "ReactBlog - 重設您的密碼",
+          html: `
+            <p>你已提出重設密碼的需求，請點擊下方連結來重設密碼</p>
+            <p>提醒你，連結僅10分鐘有效！</p>
+            <a href="${resetPasswordLink}">${resetPasswordLink}</a>
+            <br>
+            <br>
+            <hr>
+            <p>-若你未提出重設密碼要求，請忽略本信件-</p>
+          `,
+          // 啟用追蹤功能（選用）
+          "o:tracking": "yes",
+          "o:tracking-clicks": "yes",
+          "o:tracking-opens": "yes",
+        })
+        .then((msg) => {
+          return res.status(200).json({ message: "send mail success" });
+        }) // logs response data
+        .catch((err) => {
+          console.log(err);
+          return res.status(400).json({ message: err });
+        }); // logs any error
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error });
     }
   },
   /** 重設密碼 */
