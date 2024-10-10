@@ -63,14 +63,14 @@ const loginController = {
         status: 0,
       });
 
-      await UserSetting.create({
+      const userSetting = await UserSetting.create({
         user: user._id.toString(),
         language: "zh",
         theme: 0,
         emailPrompt: true,
         mobilePrompt: false,
       });
-      
+
       return res.status(200).json({ message: "success" });
     } catch (error) {
       return res.status(400).json({ message: error.message });

@@ -202,13 +202,25 @@ const userController = {
       const user = await User.findById(req.params.id)
         .select({ password: 0 }) // 排除 password
         .lean();
-      const userSetting = await UserSetting.findOne({
-        user: req.params.id,
-      }).lean();
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      return res.json({
+
+      let userSetting = await UserSetting.findOne({
+        user: req.params.id,
+      }).lean();
+
+      // if (!userSetting) {
+      //   userSetting = await UserSetting.create({
+      //     user: user._id.toString(),
+      //     language: "zh",
+      //     theme: 0,
+      //     emailPrompt: true,
+      //     mobilePrompt: false,
+      //   });
+      // }
+      
+      return res.status(200).json({
         userId: user._id,
         ...userSetting,
         ...user,
