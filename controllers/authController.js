@@ -62,13 +62,7 @@ const loginController = {
         createdAt: localTime,
         status: 0,
       });
-      // 初始化User追蹤資料
-      await Follow.create({
-        user: user._id.toString(),
-        followed: [],
-        follower: [],
-      });
-      // 初始化User設定
+
       await UserSetting.create({
         user: user._id.toString(),
         language: "zh",
@@ -76,6 +70,7 @@ const loginController = {
         emailPrompt: true,
         mobilePrompt: false,
       });
+      
       return res.status(200).json({ message: "success" });
     } catch (error) {
       return res.status(400).json({ message: error.message });
