@@ -40,9 +40,9 @@ const utilityController = {
         hashTags: new RegExp(searchString, "i"),
       });
 
-      return res.status(200).json({ article, post, user, hashtag });
+      return res.status(200).json({ code: "SUCCESS", article, post, user, hashtag });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -50,14 +50,14 @@ const utilityController = {
   encode: async (req, res) => {
     const string = req.body.string;
     const encodeStr = AES.encrypt(string, cryptoSecret);
-    return res.status(200).json({ encodeStr });
+    return res.status(200).json({ code: "SUCCESS", encodeStr });
   },
 
   /** 字串解密 */
   decode: async (req, res) => {
     const string = req.body.string;
     const decodeStr = AES.decrypt(string, cryptoSecret);
-    return res.status(200).json({ decodeStr });
+    return res.status(200).json({ code: "SUCCESS", decodeStr });
   },
 };
 

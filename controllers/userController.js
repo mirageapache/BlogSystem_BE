@@ -209,16 +209,6 @@ const userController = {
       let userSetting = await UserSetting.findOne({
         user: req.params.id,
       }).lean();
-
-      // if (!userSetting) {
-      //   userSetting = await UserSetting.create({
-      //     user: user._id.toString(),
-      //     language: "zh",
-      //     theme: 0,
-      //     emailPrompt: true,
-      //     mobilePrompt: false,
-      //   });
-      // }
       
       return res.status(200).json({
         userId: user._id,
