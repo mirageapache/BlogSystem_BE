@@ -36,7 +36,7 @@ const followController = {
         return res.status(200).json({
           followList: followListData,
           code: "NOT_FOUND",
-      });
+        });
 
       return res.status(200).json({
         followList: followListData,
@@ -77,7 +77,7 @@ const followController = {
         return res.status(200).json({
           followList: followListData,
           code: "NOT_FOUND",
-      });
+        });
 
       return res.status(200).json({
         followList: followListData,
@@ -149,7 +149,9 @@ const followController = {
 
       return res.status(200).json({ message: "update success", FollowData });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 };

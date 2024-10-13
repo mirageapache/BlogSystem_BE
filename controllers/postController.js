@@ -1,6 +1,10 @@
 const Post = require("../models/post");
 const moment = require("moment-timezone");
-const { cloudinaryUpload, cloudinaryUpdate, cloudinaryRemove } = require("../middleware/fileUtils");
+const {
+  cloudinaryUpload,
+  cloudinaryUpdate,
+  cloudinaryRemove,
+} = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
 const UserSetting = require("../models/userSetting");
 
@@ -26,7 +30,9 @@ const postController = {
         .exec();
       return res.status(200).json(posts);
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -67,7 +73,9 @@ const postController = {
         totalPosts: total,
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -138,7 +146,9 @@ const postController = {
         totalPosts: total,
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -173,7 +183,9 @@ const postController = {
 
       return res.status(200).json(post);
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -181,14 +193,14 @@ const postController = {
   createPost: async (req, res) => {
     const { author, content, status, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    let publicId = ''; // cloudinary的 public_id 後續再做圖片編輯或刪除時用的
-    let imagePath = '';
+    let publicId = ""; // cloudinary的 public_id 後續再做圖片編輯或刪除時用的
+    let imagePath = "";
 
     try {
       if (req.file) {
         const uploadResult = await cloudinaryUpload(req); // upload image to cloudinary
-          publicId = uploadResult.public_id;
-          imagePath = uploadResult.secure_url;
+        publicId = uploadResult.public_id;
+        imagePath = uploadResult.secure_url;
       }
 
       const newPost = await Post.create({
@@ -202,36 +214,40 @@ const postController = {
       });
       return res.status(200).json(newPost);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
   /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
-    const { postId, content, status, image, imageId, removeImage, hashTags } = req.body;
+    const { postId, content, status, image, imageId, removeImage, hashTags } =
+      req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     let publicId = imageId;
     let imagePath = image;
 
     try {
       if (req.file) {
-        if(isEmpty(publicId)) {
-          const uploadResult = await cloudinaryUpload(req) // upload image to cloudinary
+        if (isEmpty(publicId)) {
+          const uploadResult = await cloudinaryUpload(req); // upload image to cloudinary
           publicId = uploadResult.public_id;
           imagePath = uploadResult.secure_url;
         } else {
-          const uploadResult = await cloudinaryUpdate(req, publicId) // update avatar to cloudinary
-          avatarPath = uploadResult.secure_url
+          const uploadResult = await cloudinaryUpdate(req, publicId); // update avatar to cloudinary
+          avatarPath = uploadResult.secure_url;
         }
       }
 
       if (removeImage === "true") {
         await cloudinaryRemove(publicId);
-        imagePath = '';
-        publicId = ''
+        imagePath = "";
+        publicId = "";
       }
 
-      const upadtedPost = await Post.findByIdAndUpdate(postId,
+      const upadtedPost = await Post.findByIdAndUpdate(
+        postId,
         {
           content,
           image: imagePath,
@@ -239,13 +255,17 @@ const postController = {
           status: parseInt(status),
           hashTags: hashTagArr,
           editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
-        }, {
-        new: true,
-      }).lean();
+        },
+        {
+          new: true,
+        }
+      ).lean();
 
       return res.status(200).json(upadtedPost);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -255,7 +275,9 @@ const postController = {
       await Post.findByIdAndDelete(req.body.id);
       return res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -293,7 +315,9 @@ const postController = {
 
       return res.status(200).json({ message: "succeess", updateResult });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -342,7 +366,9 @@ const postController = {
 
       return res.status(200).json({ message: "succeess", newPostData });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -395,7 +421,9 @@ const postController = {
         totalPost: total,
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 };

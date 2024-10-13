@@ -20,7 +20,9 @@ const userController = {
       const users = await User.find().select("-password").lean();
       return res.status(200).json(users);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 取得搜尋使用者清單(含追蹤資料) */
@@ -193,7 +195,9 @@ const userController = {
         ...user,
       });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 個人-取得使用者資料 */
@@ -209,14 +213,16 @@ const userController = {
       let userSetting = await UserSetting.findOne({
         user: req.params.id,
       }).lean();
-      
+
       return res.status(200).json({
         userId: user._id,
         ...userSetting,
         ...user,
       });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 個人-更新使用者資料 */
@@ -298,7 +304,9 @@ const userController = {
       const userData = { ...updateUser, ...updateUserSetting };
       return res.status(200).json(userData);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 個人-更新使用者資料(舊的-包含檔案上傳) */
@@ -367,7 +375,7 @@ const userController = {
   //     const userData = { ...updateUser, ...updateUserSetting };
   //     return res.status(200).json(userData);
   //   } catch (error) {
-  //     return res.status(400).json({ message: error.message });
+  //     return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
   //   }
   // },
   /** 個人-(修改)深色模式 */
@@ -381,7 +389,9 @@ const userController = {
       ).lean();
       return res.status(200).json(result);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 個人-刪除使用者 */
@@ -390,7 +400,9 @@ const userController = {
       await User.findByIdAndDelete(req.params.id);
       return res.json({ message: "User deleted" });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 };

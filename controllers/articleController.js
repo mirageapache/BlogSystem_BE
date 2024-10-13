@@ -23,7 +23,9 @@ const articleController = {
 
       return res.status(200).json(articles);
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** (動態)取得文章 */
@@ -60,7 +62,9 @@ const articleController = {
         totalArticle: total,
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 取得搜尋文章 or 特定使用者的文章
@@ -109,17 +113,13 @@ const articleController = {
         .populate("comments")
         .lean()
         .exec();
+      if (!articles)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
 
       // 取得搜尋資料總數，用於計算總數
       const total = await Article.countDocuments(variable);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
-
-      if (skip === 0 && isEmpty(articles) && articles.length === 0)
-        return res.status(200).json({
-          articles,
-          code: "NOT_FOUND",
-        });
 
       return res.status(200).json({
         articles,
@@ -127,7 +127,9 @@ const articleController = {
         totalArticle: total,
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 取得文章詳細資料 */
@@ -154,12 +156,15 @@ const articleController = {
         })
         .lean();
       if (!article) {
-        return res.status(404).json({ message: "Article not found" });
+        return res
+          .status(404)
+          .json({ code: "NOT_FOUND", message: "沒有文章資料" });
       }
       return res.status(200).json(article);
     } catch (error) {
-      ``;
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 新增文章 */
@@ -181,7 +186,9 @@ const articleController = {
       });
       return res.status(200).json(newArticle);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -202,7 +209,7 @@ const articleController = {
           avatarPath = image.secure_url;
         })
         .catch((err) => {
-          return res.status(500).json({ error: err });
+          return res.status(500).json({ code: "UPLOAD_IMG_ERR", error: err });
         });
     }
 
@@ -222,7 +229,9 @@ const articleController = {
       ).lean();
       return res.status(200).json(updatedArticle);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -230,9 +239,14 @@ const articleController = {
   deleteArticle: async (req, res) => {
     try {
       await Article.findByIdAndDelete(req.params.id);
-      return res.status(200).json({ message: "Article deleted successfully" });
+      return res.status(200).json({
+        code: "DELETE_SUCCESS",
+        message: "文章刪除成功",
+      });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 喜歡/取消喜歡 文章
@@ -267,9 +281,13 @@ const articleController = {
         select: "_id account name avatar bgColor",
       });
 
-      return res.status(200).json({ message: "succeess", updateResult });
+      return res
+        .status(200)
+        .json({ code: "SUCCESS", message: "操作成功", updateResult });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 };
