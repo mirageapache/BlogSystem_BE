@@ -208,8 +208,10 @@ const articleController = {
         .then((image) => {
           avatarPath = image.secure_url;
         })
-        .catch((err) => {
-          return res.status(500).json({ code: "UPLOAD_IMG_ERR", error: err });
+        .catch((error) => {
+          return res
+            .status(500)
+            .json({ code: "UPLOAD_IMG_ERR", message: error.message });
         });
     }
 
