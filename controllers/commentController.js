@@ -4,7 +4,7 @@ const Post = require("../models/post");
 const Article = require("../models/article");
 
 const commentController = {
-  /** 取得所有貼文(測試用) */
+  /** 取得所有留言(測試用) */
   getAllComments: async (req, res) => {
     try {
       const comments = await Comment.find().lean();
@@ -31,7 +31,7 @@ const commentController = {
         })
         .lean()
         .exec();
-      if (!comments) return res.status(404).json({ message: "no comments" });
+      if (!comments) return res.status(404).json({ code: "NO_COMMENT", message: "沒有留言" });
 
       return res.status(200).json(comments);
     } catch (error) {
@@ -96,7 +96,7 @@ const commentController = {
         { content },
         { new: true }
       );
-      res.json(updatedComment);
+      return res.status(200).json(updatedComment);
     } catch (error) {
       return res
         .status(500)
@@ -108,7 +108,7 @@ const commentController = {
   deleteComment: async (req, res) => {
     try {
       await Comment.findByIdAndDelete(req.body.postId);
-      return res.status(200).json({ message: "Comment deleted successfully" });
+      return res.status(200).json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
       return res
         .status(500)

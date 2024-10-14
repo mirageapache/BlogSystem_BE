@@ -128,17 +128,13 @@ const postController = {
         .populate("comments")
         .lean()
         .exec();
+      if (!posts)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
 
       // 取得搜尋資料總數，用於計算總數
       const total = await Post.countDocuments(variable);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
-
-      if (skip === 0 && isEmpty(posts) && posts.length === 0)
-        return res.status(200).json({
-          posts,
-          code: "NOT_FOUND",
-        });
 
       return res.status(200).json({
         posts,
@@ -179,7 +175,7 @@ const postController = {
         })
         .lean()
         .exec();
-      if (!post) return res.status(404).json({ message: "Post not found" });
+      if (!post) return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文資料" });
 
       return res.status(200).json(post);
     } catch (error) {
@@ -273,7 +269,7 @@ const postController = {
   deletePost: async (req, res) => {
     try {
       await Post.findByIdAndDelete(req.body.id);
-      return res.status(200).json({ message: "Post deleted successfully" });
+      return res.status(200).json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
       return res
         .status(500)
@@ -313,7 +309,7 @@ const postController = {
         select: "_id account name avatar bgColor",
       });
 
-      return res.status(200).json({ message: "succeess", updateResult });
+      return res.status(200).json({ code: "SUCCESS", message: "操作成功", updateResult });
     } catch (error) {
       return res
         .status(500)
@@ -402,18 +398,15 @@ const postController = {
         .lean()
         .exec();
 
+      if (!posts)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
+
       // 取得搜尋資料總數，用於計算總數
       const total = await Post.countDocuments({
         hashTags: new RegExp(searchString, "i"),
       });
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
-
-      if (skip === 0 && isEmpty(posts) && posts.length === 0)
-        return res.status(200).json({
-          posts,
-          code: "NOT_FOUND",
-        });
 
       return res.status(200).json({
         posts,
