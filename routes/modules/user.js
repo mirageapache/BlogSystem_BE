@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { authorization } = require("../../middleware/auth");
-const { uploadFile, uploadMulter } = require("../../middleware/fileUtils");
+const { uploadMulter } = require("../../middleware/fileUtils");
 const userController = require("../../controllers/userController");
 const {
   validateEmail,
@@ -31,15 +31,6 @@ router.patch(
   uploadMulter,
   userController.updateUserData
 );
-
-/** 個人-更新使用者資料(舊的-包含檔案上傳) */
-// router.patch(
-//   "/own/:id",
-//   authorization,
-//   [validateEmail, validateAccount],
-//   uploadFile.single("avatarFile"),
-//   userController.updateUserData
-// );
 
 /** 個人-修改(背景)深色模式 */
 router.patch("/own/theme/:id", authorization, userController.setDarkMode);

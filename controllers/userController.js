@@ -2,7 +2,6 @@ const { isEmpty } = require("lodash");
 const User = require("../models/user");
 const UserSetting = require("../models/userSetting");
 const {
-  imgurFileHandler,
   cloudinaryUpload,
   cloudinaryUpdate,
   cloudinaryRemove,
@@ -20,7 +19,9 @@ const userController = {
       const users = await User.find().select("-password").lean();
       return res.status(200).json(users);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 取得搜尋使用者清單(含追蹤資料) */
@@ -49,9 +50,8 @@ const userController = {
         .select("_id account name avatar bgColor")
         .lean();
 
-      // 搜尋不到相關使用者
-      if (isEmpty(users) || users.length === 0)
-        return res.status(200).send({ userList: users, code: "NOT_FOUND" });
+      if (!users)
+        return res.status(404).send({ code: "NOT_FOUND", message: "搜尋不到相關使用者" });
 
       const total = await User.countDocuments(variable);
       const totalPages = Math.ceil(total / limit);
@@ -106,7 +106,9 @@ const userController = {
         totalUser: total,
       });
     } catch (error) {
-      return res.status(400).json({ error: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 取得推薦使用者清單(含追蹤資料)
@@ -176,45 +178,53 @@ const userController = {
 
       return res.status(200).json(recommendUserList);
     } catch (error) {
-      return res.status(400).json({ error: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 取得一般使用者資料 */
   getOtherUserData: async (req, res) => {
     try {
       const user = await User.findById(req.params.id)
-        .select({ password: 0 }) // 排除 password
+        .select({ password: 0 }) // 排除 password資訊
         .lean();
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者資料" });
       }
-      return res.json({
+      return res.status(200).json({
         userId: user._id,
         ...user,
       });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 個人-取得使用者資料 */
   getOwnUserData: async (req, res) => {
     try {
       const user = await User.findById(req.params.id)
-        .select({ password: 0 }) // 排除 password
+        .select({ password: 0 })
         .lean();
-      const userSetting = await UserSetting.findOne({
+      if (!user) {
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者資料" });
+      }
+
+      let userSetting = await UserSetting.findOne({
         user: req.params.id,
       }).lean();
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      return res.json({
+
+      return res.status(200).json({
         userId: user._id,
         ...userSetting,
         ...user,
       });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 個人-更新使用者資料 */
@@ -255,12 +265,12 @@ const userController = {
       if (email) {
         const checkResult = await emailExisted(email, userId);
         if (checkResult)
-          return res.status(401).json({ message: "該Email已存在！" });
+          return res.status(401).json({ code: "EMAIL_EXISTED", message: "該Email已存在" });
       }
       if (account) {
         const checkResult = await accountExisting(account, userId);
         if (checkResult)
-          return res.status(401).json({ message: "該帳號名稱已存在！" });
+          return res.status(401).json({ code: "ACCOUNT_EXISTED", message: "該帳號名稱已存在" });
       }
 
       // 更新User Info
@@ -280,7 +290,7 @@ const userController = {
         .lean();
 
       if (isEmpty(updateUser))
-        return res.status(404).json({ message: "user not found" });
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者" });
 
       // 更新User Setting
       const updateUserSetting = await UserSetting.findOneAndUpdate(
@@ -296,78 +306,11 @@ const userController = {
       const userData = { ...updateUser, ...updateUserSetting };
       return res.status(200).json(userData);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
-  /** 個人-更新使用者資料(舊的-包含檔案上傳) */
-  // updateUserData: async (req, res) => {
-  //   const userId = req.params.id;
-  //   const {
-  //     email,
-  //     name,
-  //     account,
-  //     bio,
-  //     language,
-  //     emailPrompt,
-  //     mobilePrompt,
-  //     removeAvatar,
-  //   } = req.body;
-  //   const avatarFile = req.file || {};
-  //   const filePaths =
-  //     isEmpty(avatarFile) || removeAvatar === "true"
-  //       ? null
-  //       : await imgurFileHandler(avatarFile); // imgur圖片檔網址(路徑)
-
-  //   let variables = { email, name, account, bio };
-  //   if (removeAvatar === "true" || !isEmpty(filePaths)) {
-  //     // 有更新或移除頭貼再加入filePaths
-  //     variables = {
-  //       ...variables,
-  //       avatar: filePaths,
-  //     };
-  //   }
-
-  //   try {
-  //     if (email) {
-  //       const checkResult = await emailExisted(email, userId);
-  //       if (checkResult)
-  //         return res.status(401).json({ message: "該Email已存在！" });
-  //     }
-  //     if (account) {
-  //       const checkResult = await accountExisting(account, userId);
-  //       if (checkResult)
-  //         return res.status(401).json({ message: "該帳號名稱已存在！" });
-  //     }
-
-  //     // 更新User Info
-  //     const updateUser = await User.findByIdAndUpdate(
-  //       req.params.id,
-  //       variables,
-  //       { new: true } // true 代表會回傳更新後的資料
-  //     )
-  //       .select({ password: 0 })
-  //       .lean();
-
-  //     if (isEmpty(updateUser))
-  //       return res.status(404).json({ message: "user not found" });
-
-  //     // 更新User Setting
-  //     const updateUserSetting = await UserSetting.findOneAndUpdate(
-  //       { user: req.params.id },
-  //       {
-  //         language,
-  //         emailPrompt: emailPrompt === "true",
-  //         mobilePrompt: mobilePrompt === "true",
-  //       },
-  //       { new: true }
-  //     ).lean();
-
-  //     const userData = { ...updateUser, ...updateUserSetting };
-  //     return res.status(200).json(userData);
-  //   } catch (error) {
-  //     return res.status(400).json({ message: error.message });
-  //   }
-  // },
   /** 個人-(修改)深色模式 */
   setDarkMode: async (req, res) => {
     const { theme } = req.body;
@@ -379,16 +322,20 @@ const userController = {
       ).lean();
       return res.status(200).json(result);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 個人-刪除使用者 */
   deleteUser: async (req, res) => {
     try {
       await User.findByIdAndDelete(req.params.id);
-      return res.json({ message: "User deleted" });
+      return res.json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 };

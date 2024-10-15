@@ -1,6 +1,10 @@
 const Post = require("../models/post");
 const moment = require("moment-timezone");
-const { cloudinaryUpload, cloudinaryUpdate, cloudinaryRemove } = require("../middleware/fileUtils");
+const {
+  cloudinaryUpload,
+  cloudinaryUpdate,
+  cloudinaryRemove,
+} = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
 const UserSetting = require("../models/userSetting");
 
@@ -26,7 +30,9 @@ const postController = {
         .exec();
       return res.status(200).json(posts);
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -67,7 +73,9 @@ const postController = {
         totalPosts: total,
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -120,17 +128,13 @@ const postController = {
         .populate("comments")
         .lean()
         .exec();
+      if (!posts)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
 
       // 取得搜尋資料總數，用於計算總數
       const total = await Post.countDocuments(variable);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
-
-      if (skip === 0 && isEmpty(posts) && posts.length === 0)
-        return res.status(200).json({
-          posts,
-          code: "NOT_FOUND",
-        });
 
       return res.status(200).json({
         posts,
@@ -138,7 +142,9 @@ const postController = {
         totalPosts: total,
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -169,11 +175,13 @@ const postController = {
         })
         .lean()
         .exec();
-      if (!post) return res.status(404).json({ message: "Post not found" });
+      if (!post) return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文資料" });
 
       return res.status(200).json(post);
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -181,14 +189,14 @@ const postController = {
   createPost: async (req, res) => {
     const { author, content, status, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    let publicId = ''; // cloudinary的 public_id 後續再做圖片編輯或刪除時用的
-    let imagePath = '';
+    let publicId = ""; // cloudinary的 public_id 後續再做圖片編輯或刪除時用的
+    let imagePath = "";
 
     try {
       if (req.file) {
         const uploadResult = await cloudinaryUpload(req); // upload image to cloudinary
-          publicId = uploadResult.public_id;
-          imagePath = uploadResult.secure_url;
+        publicId = uploadResult.public_id;
+        imagePath = uploadResult.secure_url;
       }
 
       const newPost = await Post.create({
@@ -202,36 +210,40 @@ const postController = {
       });
       return res.status(200).json(newPost);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
   /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
-    const { postId, content, status, image, imageId, removeImage, hashTags } = req.body;
+    const { postId, content, status, image, imageId, removeImage, hashTags } =
+      req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     let publicId = imageId;
     let imagePath = image;
 
     try {
       if (req.file) {
-        if(isEmpty(publicId)) {
-          const uploadResult = await cloudinaryUpload(req) // upload image to cloudinary
+        if (isEmpty(publicId)) {
+          const uploadResult = await cloudinaryUpload(req); // upload image to cloudinary
           publicId = uploadResult.public_id;
           imagePath = uploadResult.secure_url;
         } else {
-          const uploadResult = await cloudinaryUpdate(req, publicId) // update avatar to cloudinary
-          avatarPath = uploadResult.secure_url
+          const uploadResult = await cloudinaryUpdate(req, publicId); // update avatar to cloudinary
+          avatarPath = uploadResult.secure_url;
         }
       }
 
       if (removeImage === "true") {
         await cloudinaryRemove(publicId);
-        imagePath = '';
-        publicId = ''
+        imagePath = "";
+        publicId = "";
       }
 
-      const upadtedPost = await Post.findByIdAndUpdate(postId,
+      const upadtedPost = await Post.findByIdAndUpdate(
+        postId,
         {
           content,
           image: imagePath,
@@ -239,13 +251,17 @@ const postController = {
           status: parseInt(status),
           hashTags: hashTagArr,
           editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
-        }, {
-        new: true,
-      }).lean();
+        },
+        {
+          new: true,
+        }
+      ).lean();
 
       return res.status(200).json(upadtedPost);
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -253,9 +269,11 @@ const postController = {
   deletePost: async (req, res) => {
     try {
       await Post.findByIdAndDelete(req.body.id);
-      return res.status(200).json({ message: "Post deleted successfully" });
+      return res.status(200).json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -291,9 +309,11 @@ const postController = {
         select: "_id account name avatar bgColor",
       });
 
-      return res.status(200).json({ message: "succeess", updateResult });
+      return res.status(200).json({ code: "SUCCESS", message: "操作成功", updateResult });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -342,7 +362,9 @@ const postController = {
 
       return res.status(200).json({ message: "succeess", newPostData });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 
@@ -376,6 +398,9 @@ const postController = {
         .lean()
         .exec();
 
+      if (!posts)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
+
       // 取得搜尋資料總數，用於計算總數
       const total = await Post.countDocuments({
         hashTags: new RegExp(searchString, "i"),
@@ -383,19 +408,15 @@ const postController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (skip === 0 && isEmpty(posts) && posts.length === 0)
-        return res.status(200).json({
-          posts,
-          code: "NOT_FOUND",
-        });
-
       return res.status(200).json({
         posts,
         nextPage: nextPage,
         totalPost: total,
       });
     } catch (error) {
-      return res.status(500).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 };

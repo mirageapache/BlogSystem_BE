@@ -28,15 +28,13 @@ const followController = {
         };
       });
 
+      if (!followListData) {
+        return res.status(404).json({ code: "NO_FOUND", message: "沒有追蹤" });
+      }
+
       const total = await Follow.countDocuments({ follower: userId });
       const totalPages = Math.ceil(total / limit);
       const nextPage = page + 1 > totalPages ? -1 : page + 1;
-
-      if (skip === 0 && isEmpty(followListData) && followListData.length === 0)
-        return res.status(200).json({
-          followList: followListData,
-          code: "NOT_FOUND",
-      });
 
       return res.status(200).json({
         followList: followListData,
@@ -44,7 +42,7 @@ const followController = {
         totalUser: total,
       });
     } catch (error) {
-      return res.status(400).json({ error: error.message });
+      return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 取得粉絲清單(user是被追蹤人的情況) */
@@ -69,15 +67,13 @@ const followController = {
         return { ...follow.follower, followState: follow.followState };
       });
 
+      if (!followListData) {
+        return res.status(404).json({ code: "NO_FOUND", message: "沒有粉絲" });
+      }
+
       const total = await Follow.countDocuments({ follower: userId });
       const totalPages = Math.ceil(total / limit);
       const nextPage = page + 1 > totalPages ? -1 : page + 1;
-
-      if (skip === 0 && isEmpty(followListData) && followListData.length === 0)
-        return res.status(200).json({
-          followList: followListData,
-          code: "NOT_FOUND",
-      });
 
       return res.status(200).json({
         followList: followListData,
@@ -85,7 +81,7 @@ const followController = {
         totalUser: total,
       });
     } catch (error) {
-      return res.status(400).json({ error: error.message });
+      return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 追蹤
@@ -101,13 +97,13 @@ const followController = {
         followed: targetId,
       });
       if (existingFollow)
-        return res.status(400).json({ message: "already followed" }); // 已追蹤
+        return res.status(401).json({ code: "FOLLOWED", message: "已追蹤" });
 
       await Follow.create({ follower: userId, followed: targetId });
 
-      return res.status(200).json({ message: "follow success" });
-    } catch (err) {
-      return res.status(400).json({ message: err.message });
+      return res.status(200).json({ code: "SUCCESS", message: "追蹤成功" });
+    } catch (error) {
+      return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 取消追蹤
@@ -123,13 +119,13 @@ const followController = {
         followed: targetId,
       });
       if (!existingFollow)
-        return res.status(400).json({ message: "not followed" }); // 未追蹤(不須取消)
+        return res.status(401).json({ code: "UNFOLLOWED", message: "已取消追蹤" });
 
       await Follow.findOneAndDelete({ follower: userId, followed: targetId });
 
-      return res.status(200).json({ message: "unfollow success" });
-    } catch (err) {
-      return res.status(400).json({ message: err.message });
+      return res.status(200).json({ code: "SUCCESS", message: "取消追蹤成功" });
+    } catch (error) {
+      return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
   /** 更新訂閱狀態
@@ -147,9 +143,11 @@ const followController = {
         { new: true }
       );
 
-      return res.status(200).json({ message: "update success", FollowData });
+      return res.status(200).json({ code: "UPDATE_SUCCESS", message: "已更新狀態", FollowData });
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
 };
