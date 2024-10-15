@@ -9,12 +9,12 @@ const post = require("./modules/post");
 const user = require("./modules/user");
 const utility = require("./modules/utility");
 
-router.use("/article", article);
-router.use("/comment", comment);
-router.use("/follow", follow);
-router.use("/auth", auth);
-router.use("/post", post);
-router.use("/user", user);
-router.use("/utility", utility);
+router.use("/api/article", article);
+router.use("/api/comment", comment);
+router.use("/api/follow", follow);
+router.use("/api/auth", auth);
+router.use("/api/post", post);
+router.use("/api/user", user);
+router.use("/api/utility", utility);
 
 module.exports = router;
