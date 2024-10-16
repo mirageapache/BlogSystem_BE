@@ -119,11 +119,16 @@ const loginController = {
         authToken,
         userData: {
           userId: user._id,
+          email: user.email,
           account: user.account,
           name: user.name,
           avatar: user.avatar,
-          role: user.role,
+          avatarId: user.avatarId,
+          role: user.userRole,
           status: user.status,
+          bgColor: user.bgColor,
+          bio: user.bio,
+          createdAt: user.createdAt,
           ...userSetting,
         },
       });
