@@ -67,6 +67,8 @@ const postController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
+      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
+
       return res.status(200).json({
         posts,
         nextPage: nextPage,
@@ -128,13 +130,13 @@ const postController = {
         .populate("comments")
         .lean()
         .exec();
-      if (!posts)
-        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
 
       // 取得搜尋資料總數，用於計算總數
       const total = await Post.countDocuments(variable);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+
+      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
 
       return res.status(200).json({
         posts,

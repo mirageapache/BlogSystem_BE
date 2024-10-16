@@ -1,4 +1,3 @@
-const { isEmpty } = require("lodash");
 const Follow = require("../models/follow");
 
 const followController = {
@@ -28,13 +27,11 @@ const followController = {
         };
       });
 
-      if (!followListData) {
-        return res.status(404).json({ code: "NO_FOUND", message: "沒有追蹤" });
-      }
-
       const total = await Follow.countDocuments({ follower: userId });
       const totalPages = Math.ceil(total / limit);
       const nextPage = page + 1 > totalPages ? -1 : page + 1;
+
+      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有追蹤" });
 
       return res.status(200).json({
         followList: followListData,
@@ -67,13 +64,11 @@ const followController = {
         return { ...follow.follower, followState: follow.followState };
       });
 
-      if (!followListData) {
-        return res.status(404).json({ code: "NO_FOUND", message: "沒有粉絲" });
-      }
-
       const total = await Follow.countDocuments({ follower: userId });
       const totalPages = Math.ceil(total / limit);
       const nextPage = page + 1 > totalPages ? -1 : page + 1;
+
+      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有粉絲" });
 
       return res.status(200).json({
         followList: followListData,
