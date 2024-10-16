@@ -50,14 +50,15 @@ const userController = {
         .select("_id account name avatar bgColor")
         .lean();
 
-      if (!users)
-        return res.status(404).send({ code: "NOT_FOUND", message: "搜尋不到相關使用者" });
-
       const total = await User.countDocuments(variable);
       const totalPages = Math.ceil(total / limit);
       const nextPage = page + 1 > totalPages ? -1 : page + 1;
+
+      if (total === 0)
+        return res.status(404).send({ code: "NOT_FOUND", message: "搜尋不到相關使用者" });
+
       // 未登入則不判斷追蹤狀態，直接回傳搜尋結果
-      if (!isEmpty(users) && isEmpty(userId))
+      if (isEmpty(userId))
         return res.status(200).send({
           userList: users,
           nextPage,
