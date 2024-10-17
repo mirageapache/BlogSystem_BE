@@ -18,9 +18,9 @@ const uploadMulter = multer({
     destination: function (req, file, cb) {
       const dir = 'temp/';
       if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true }); // 自動創建 temp 資料夾
+        fs.mkdirSync(dir, { recursive: true });
       }
-      cb(null, dir);// 檔案將暫時儲存到 temp 資料夾
+      cb(null, dir);
     },
     filename: function (req, file, cb) {
       cb(null, Date.now() + path.extname(file.originalname)); // 設定檔案名稱
@@ -50,6 +50,7 @@ const cloudinaryUpload = async (req) => {
       folder: folderPath,
     })
     .catch((error) => {
+      console.log(error);
       return error;
     });
   return uploadResult;

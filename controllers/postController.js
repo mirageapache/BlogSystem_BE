@@ -212,6 +212,7 @@ const postController = {
       });
       return res.status(200).json(newPost);
     } catch (error) {
+      console.log(error);
       return res
         .status(500)
         .json({ code: "SYSTEM_ERR", message: error.message });
