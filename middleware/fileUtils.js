@@ -3,6 +3,7 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
 const path = require("path");
+const fs = require('fs');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -15,7 +16,11 @@ const folderPath = 'blogSystem/images'; // 指定cloudinary資料夾
 const uploadMulter = multer({
   storage: multer.diskStorage({
     destination: function (req, file, cb) {
-      cb(null, "temp/"); // 檔案將暫時儲存到 temp 資料夾
+      const dir = 'temp/';
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
     },
     filename: function (req, file, cb) {
       cb(null, Date.now() + path.extname(file.originalname)); // 設定檔案名稱
@@ -45,6 +50,7 @@ const cloudinaryUpload = async (req) => {
       folder: folderPath,
     })
     .catch((error) => {
+      console.log(error);
       return error;
     });
   return uploadResult;
