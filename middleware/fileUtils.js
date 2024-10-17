@@ -3,7 +3,6 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
 const path = require("path");
-const fs = require('fs');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -14,20 +13,9 @@ const folderPath = 'blogSystem/images'; // 指定cloudinary資料夾
 
 /** 上傳前置處理 */
 const uploadMulter = multer({
-  storage: multer.diskStorage({
-    destination: function (req, file, cb) {
-      const dir = 'temp/';
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      cb(null, dir);
-    },
-    filename: function (req, file, cb) {
-      cb(null, Date.now() + path.extname(file.originalname)); // 設定檔案名稱
-    },
-  }),
+  storage: multer.memoryStorage(), // 使用記憶體存儲
   limits: {
-    fileSize: 10485760, //最大 10mb
+    fileSize: 10485760, // 最大 10mb
   },
   fileFilter: function (req, file, cb) {
     let ext = path.extname(file.originalname);
@@ -41,34 +29,42 @@ const uploadMulter = multer({
     }
     cb(null, true);
   },
-}).single("imageFile"); //只接收 formdata 爲 'imageFile' 的欄位
+}).single("imageFile"); // 只接收 formdata 爲 'imageFile' 的欄位
 
 /** 上傳圖檔 (cloudinary) */
 const cloudinaryUpload = async (req) => {
-  const uploadResult = await cloudinary.uploader
-    .upload(req.file.path, {
-      folder: folderPath,
-    })
-    .catch((error) => {
-      console.log(error);
-      return error;
+  return new Promise((resolve, reject) => {
+    if (!req.file) return reject(new Error("檔案未提供"));
+
+    const stream = cloudinary.uploader.upload_stream({ folder: folderPath }, (error, result) => {
+      if (error) {
+        return reject(error);
+      }
+      resolve(result);
     });
-  return uploadResult;
+    streamifier.createReadStream(req.file.buffer).pipe(stream);
+  });
 };
 
 /** 更新圖片 (cloudinary) */
 const cloudinaryUpdate = async (req, publicId) => {
-  const imagePath = req.file.path;
-  const uploadResult = await cloudinary.uploader
-    .upload(imagePath, {
-      public_id: publicId,
-      overwrite: true,
-      folder: folderPath,
-    })
-    .catch((error) => {
-      return error;
-    });
-  return uploadResult;
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        public_id: publicId,
+        overwrite: true,
+        folder: folderPath,
+      },
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      }
+    );
+
+    streamifier.createReadStream(req.file.buffer).pipe(stream);
+  });
 };
 
 /** 刪除圖片 (cloudinary) */
