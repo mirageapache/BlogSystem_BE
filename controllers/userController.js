@@ -186,13 +186,33 @@ const userController = {
   },
   /** 取得一般使用者資料 */
   getOtherUserData: async (req, res) => {
+    const userId = req.params.id // 要查詢的使用者id
+    const currentUserId = req.body.currentUserId; // 登入的使用者id，用來檢查是否有追蹤資訊
     try {
-      const user = await User.findById(req.params.id)
+      const user = await User.findById(userId)
         .select({ password: 0 }) // 排除 password資訊
         .lean();
       if (!user) {
         return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者資料" });
       }
+
+      const follow = await Follow.findOne({ followed: userId, follower: currentUserId })
+      .select("followState")
+      .populate({
+        path: "follower",
+        select: "_id",
+      })
+      .lean();
+
+      if (follow) {
+        return res.status(200).json({
+          userId: user._id,
+          ...user,
+          isFollow: true,
+          followState: follow.followState,
+        });
+      }
+
       return res.status(200).json({
         userId: user._id,
         ...user,
