@@ -56,7 +56,8 @@ const articleController = {
       const totalArticle = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 >= totalArticle ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
+      if (total === 0)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
 
       return res.status(200).json({
         articles,
@@ -121,7 +122,8 @@ const articleController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
+      if (total === 0)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
 
       return res.status(200).json({
         articles,
@@ -242,7 +244,7 @@ const articleController = {
   /** 刪除文章 */
   deleteArticle: async (req, res) => {
     try {
-      await Article.findByIdAndDelete(req.params.id);
+      await Article.findByIdAndDelete(req.body.articleId);
       return res.status(200).json({
         code: "DELETE_SUCCESS",
         message: "文章刪除成功",

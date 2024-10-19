@@ -67,7 +67,8 @@ const postController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
+      if (total === 0)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
 
       return res.status(200).json({
         posts,
@@ -136,7 +137,8 @@ const postController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
+      if (total === 0)
+        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
 
       return res.status(200).json({
         posts,
@@ -177,7 +179,10 @@ const postController = {
         })
         .lean()
         .exec();
-      if (!post) return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文資料" });
+      if (!post)
+        return res
+          .status(404)
+          .json({ code: "NOT_FOUND", message: "沒有貼文資料" });
 
       return res.status(200).json(post);
     } catch (error) {
@@ -271,8 +276,10 @@ const postController = {
   /** 刪除貼文 */
   deletePost: async (req, res) => {
     try {
-      await Post.findByIdAndDelete(req.body.id);
-      return res.status(200).json({ code: "DELETE_SUCCESS", message: "刪除成功" });
+      await Post.findByIdAndDelete(req.body.postId);
+      return res
+        .status(200)
+        .json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
       return res
         .status(500)
@@ -312,7 +319,9 @@ const postController = {
         select: "_id account name avatar bgColor",
       });
 
-      return res.status(200).json({ code: "SUCCESS", message: "操作成功", updateResult });
+      return res
+        .status(200)
+        .json({ code: "SUCCESS", message: "操作成功", updateResult });
     } catch (error) {
       return res
         .status(500)
