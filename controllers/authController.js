@@ -148,15 +148,16 @@ const loginController = {
           .status(404)
           .json({ code: "EMAIL_NOT_EXIST", message: "Email輸入錯誤或未註冊" });
       const urlToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "10m",
+        expiresIn: "30m",
       });
       const resetPasswordLink = `${process.env.FRONTEND_URL}/reset_password/${urlToken}`;
+      const mailOne = process.env.MAIL_ONE;
 
       // Mailgun 郵件內容
       mg.messages
         .create(process.env.MAILGUN_DOMAIN, {
           from: `ReactBlog <noreply@${process.env.MAILGUN_DOMAIN}>`,
-          to: user.email,
+          to: mailOne, // user.email, 為了demo方便，暫時都寄到mailOne處理
           subject: "ReactBlog - 重設您的密碼",
           html: `
             <p>你已提出重設密碼的需求，請點擊下方連結來重設密碼</p>
