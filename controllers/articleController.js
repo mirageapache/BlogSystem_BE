@@ -280,7 +280,12 @@ const articleController = {
         articleId,
         { likedByUsers: newLikeList },
         { new: true }
-      ).populate({
+      )
+      .populate({
+        path: "author",
+        select: "_id account name avatar bgColor",
+      })
+      .populate({
         path: "likedByUsers",
         select: "_id account name avatar bgColor",
       });

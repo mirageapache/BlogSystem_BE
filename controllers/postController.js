@@ -307,7 +307,15 @@ const postController = {
         postId,
         { likedByUsers: newLikeList },
         { new: true }
-      ).populate({
+      )
+      .populate("author", {
+        _id: 1,
+        account: 1,
+        name: 1,
+        avatar: 1,
+        bgColor: 1,
+      })
+      .populate({
         path: "likedByUsers",
         select: "_id account name avatar bgColor",
       });
