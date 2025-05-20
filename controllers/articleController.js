@@ -2,6 +2,7 @@ const moment = require("moment-timezone");
 const { isEmpty } = require("lodash");
 const { imgurFileHandler } = require("../middleware/fileUtils");
 const Article = require("../models/article");
+const { convertDraftToTiptap, convertTiptapToDraft } = require('../middleware/articleUtils');
 
 const articleController = {
   /** 取得所有文章 */
@@ -138,7 +139,8 @@ const articleController = {
   },
   /** 取得文章詳細資料 */
   getArticleDetail: async (req, res) => {
-    const { articleId } = req.body;
+    const { articleId, clientType } = req.body;
+
     try {
       const article = await Article.findOne({ _id: articleId })
         .populate({
@@ -159,10 +161,17 @@ const articleController = {
           ],
         })
         .lean();
+
       if (!article) {
         return res
           .status(404)
           .json({ code: "NOT_FOUND", message: "沒有文章資料" });
+      }
+
+      // 根據前端專案轉換文章內容格式
+      if (clientType === 'vue') {
+        // 如果是 Vue 專案，將內容轉換為 Tiptap 格式，React 專案則保留 Draft.js 格式
+        article.content = convertDraftToTiptap(article.content);
       }
       return res.status(200).json(article);
     } catch (error) {
@@ -173,14 +182,17 @@ const articleController = {
   },
   /** 新增文章 */
   createArticle: async (req, res) => {
-    const { userId, title, content, subject = "", hashTags } = req.body;
+    const { userId, title, content, subject = "", hashTags, clientType } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
 
     try {
+      // Vue 專案發送的請求，需要將 Tiptap 格式轉換為 Draft.js 格式
+      const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
+
       const newArticle = await Article.create({
         author: userId,
         title,
-        content,
+        content: articleContent,
         status: 0,
         subject,
         hashTags: hashTagArr,
@@ -205,6 +217,7 @@ const articleController = {
       content,
       subject = "",
       hashTags,
+      clientType
     } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
     if (req.file) {
@@ -220,12 +233,15 @@ const articleController = {
     }
 
     try {
+      // Vue 專案發送的請求，需要將 Tiptap 格式轉換為 Draft.js 格式
+      const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
+
       const updatedArticle = await Article.findByIdAndUpdate(
         articleId,
         {
           author: userId,
           title,
-          content,
+          content: articleContent,
           status: 0,
           subject,
           hashTags: hashTagArr,
