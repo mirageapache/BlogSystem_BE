@@ -55,7 +55,7 @@ const articleController = {
       // 文章總筆數，用於計算總頁數
       const total = await Article.countDocuments();
       const totalArticle = Math.ceil(total / limit); // 總頁數
-      const nextPage = page + 1 >= totalArticle ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
+      const nextPage = page + 1 > totalArticle ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
       if (total === 0)
         return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
