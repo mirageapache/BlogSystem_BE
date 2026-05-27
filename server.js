@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
@@ -12,13 +13,18 @@ const app = express();
 
 app.use(
   cors({
-    origin: "*", // 或者指定允許的源
+    origin: [
+      "http://localhost:3001", // 本地開發的URL
+      "http://172.31.4.24:3001", // 本地開發的URL
+      "https://blog-system-fe.vercel.app", // 前端部署的URL
+    ], // 或者指定允許的源
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
 app.use(bodyParser.json());
+app.use(cookieParser());
 
 // 資料庫連線設定
 mongoose.set("strictQuery", false);

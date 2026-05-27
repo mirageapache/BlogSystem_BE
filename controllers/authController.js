@@ -108,15 +108,21 @@ const loginController = {
       }
 
       const userSetting = await UserSetting.findOne({ user: user._id }).lean();
-      // 產生並回傳 JWT token
+      // 產生 JWT token 並寫入 httpOnly cookie
       const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d", // 設定token有效時間
+        expiresIn: "7d",
+      });
+      const isProd = process.env.NODE_ENV === "production";
+      res.cookie("authToken", authToken, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "None" : "Lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7天
       });
 
       return res.status(200).json({
         code: "SUCCESS",
         message: "登入成功",
-        authToken,
         userData: {
           userId: user._id,
           email: user.email,
@@ -244,6 +250,78 @@ const loginController = {
     const password = req.body.password;
     const hashedPwd = bcrypt.hashSync(password, process.env.SALT_ROUNDS);
     return res.status(200).json({ code: "SUCCESS", hashedPwd });
+  },
+  /** 取得目前登入使用者資料 */
+  getCurrentUser: async (req, res) => {
+    try {
+      const { userId } = req.user;
+      const user = await User.findById(userId).lean();
+      if (!user)
+        return res.status(404).json({ code: "USER_NOT_FOUND", message: "使用者不存在" });
+
+      const userSetting = await UserSetting.findOne({ user: userId }).lean();
+      return res.status(200).json({
+        code: "SUCCESS",
+        userData: {
+          userId: user._id,
+          email: user.email,
+          account: user.account,
+          name: user.name,
+          avatar: user.avatar,
+          avatarId: user.avatarId,
+          role: user.userRole,
+          status: user.status,
+          bgColor: user.bgColor,
+          bio: user.bio,
+          createdAt: user.createdAt,
+          ...userSetting,
+        },
+      });
+    } catch (error) {
+      return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
+    }
+  },
+  /** 訪客登入 */
+  guestLogin: async (req, res) => {
+    try {
+      // 不需要帳密，直接簽發一個受限 token
+      const guestToken = jwt.sign(
+        { role: 'guest', userId: 'guest' },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+      const isProd = process.env.NODE_ENV === "production";
+      res.cookie("authToken", guestToken, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "None" : "Lax",
+        maxAge: 60 * 60 * 1000, // 1小時
+      });
+
+      return res.status(200).json({
+        code: "SUCCESS",
+        userData: {
+          userId: 'guest',
+          name: '訪客',
+          email: 'guest@blogsystem.com',
+          role: 'guest',
+        }
+      });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
+    }
+  },
+  /** 登出 */
+  signOut: async (req, res) => {
+    const isProd = process.env.NODE_ENV === "production";
+    res.clearCookie("authToken", {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? "None" : "Lax",
+    });
+    return res.status(200).json({ code: "SUCCESS", message: "登出成功" });
   },
 };
 

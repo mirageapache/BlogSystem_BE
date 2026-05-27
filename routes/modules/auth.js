@@ -23,7 +23,16 @@ router.post("/resetpwd", [validatePassword], authController.resetPassword);
 /** 身分驗證 */
 router.post("/checkAuth", authorization, authController.checkAuth);
 
+/** 取得目前使用者資料 */
+router.get("/me", authorization, authController.getCurrentUser);
+
 /** 密碼加密 */
 router.post("/hashPwd", authController.passwordEncode);
+
+/** 訪客登入 */
+router.post("/guest", authController.guestLogin);
+
+/** 登出 */
+router.post("/signout", authController.signOut);
 
 module.exports = router;
