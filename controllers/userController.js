@@ -1,5 +1,8 @@
 const { isEmpty } = require("lodash");
+const mongoose = require("mongoose");
 const User = require("../models/user");
+
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === String(id);
 const UserSetting = require("../models/userSetting");
 const {
   cloudinaryUpload,
@@ -26,7 +29,8 @@ const userController = {
   },
   /** 取得搜尋使用者清單(含追蹤資料) */
   getSearchUserList: async (req, res) => {
-    const { searchString, userId } = req.body;
+    const { searchString } = req.body;
+    const userId = req.user?.userId && req.user.userId !== "guest" ? req.user.userId : null;
     const page = parseInt(req.body.page) || 1;
     const limit = parseInt(req.body.limit) || 20;
     const skip = (page - 1) * limit;
@@ -55,11 +59,15 @@ const userController = {
       const nextPage = page + 1 > totalPages ? -1 : page + 1;
 
       if (total === 0)
-        return res.status(404).send({ code: "NOT_FOUND", message: "搜尋不到相關使用者" });
+        return res.status(200).json({
+          userList: [],
+          nextPage: -1,
+          totalUser: 0,
+        });
 
       // 未登入則不判斷追蹤狀態，直接回傳搜尋結果
       if (isEmpty(userId))
-        return res.status(200).send({
+        return res.status(200).json({
           userList: users,
           nextPage,
           totalUser: total,
@@ -116,7 +124,7 @@ const userController = {
    * @param userId 當前使用者userId(用來判斷是否已追蹤)
    */
   getRecommendUserList: async (req, res) => {
-    const { userId } = req.body;
+    const userId = req.user?.userId && req.user.userId !== "guest" ? req.user.userId : null;
 
     try {
       // 用aggregate()進行資料集合和排序，查詢出(前10位)推薦使用者清單
@@ -187,13 +195,25 @@ const userController = {
   /** 取得一般使用者資料 */
   getOtherUserData: async (req, res) => {
     const userId = req.params.id // 要查詢的使用者id
-    const currentUserId = req.body.currentUserId; // 登入的使用者id，用來檢查是否有追蹤資訊
+    // 登入的使用者id 一律從 JWT 取，未登入則為 undefined（不顯示追蹤狀態）
+    const currentUserId = req.user?.userId && req.user.userId !== "guest" ? req.user.userId : null;
+
+    if (!isValidId(userId))
+      return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者資料" });
+
     try {
       const user = await User.findById(userId)
-        .select({ password: 0 }) // 排除 password資訊
+        .select({ password: 0 })
         .lean();
       if (!user) {
         return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者資料" });
+      }
+
+      if (!currentUserId) {
+        return res.status(200).json({
+          userId: user._id,
+          ...user,
+        });
       }
 
       const follow = await Follow.findOne({ followed: userId, follower: currentUserId })
@@ -226,20 +246,20 @@ const userController = {
   /** 個人-取得使用者資料 */
   getOwnUserData: async (req, res) => {
     try {
-      const user = await User.findById(req.params.id)
+      const userId = req.user.userId;
+      const user = await User.findById(userId)
         .select({ password: 0 })
         .lean();
       if (!user) {
         return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者資料" });
       }
 
-      let userSetting = await UserSetting.findOne({
-        user: req.params.id,
-      }).lean();
+      const userSetting = await UserSetting.findOne({ user: userId }).lean();
+      const { _id: _sid, user: _suser, __v: _sv, ...userSettingData } = userSetting ?? {};
 
       return res.status(200).json({
         userId: user._id,
-        ...userSetting,
+        ...userSettingData,
         ...user,
       });
     } catch (error) {
@@ -250,7 +270,7 @@ const userController = {
   },
   /** 個人-更新使用者資料 */
   updateUserData: async (req, res) => {
-    const userId = req.params.id;
+    const userId = req.user.userId;
     const {
       email,
       name,
@@ -296,7 +316,7 @@ const userController = {
 
       // 更新User Info
       const updateUser = await User.findByIdAndUpdate(
-        req.params.id,
+        userId,
         {
           email,
           name,
@@ -315,7 +335,7 @@ const userController = {
 
       // 更新User Setting
       const updateUserSetting = await UserSetting.findOneAndUpdate(
-        { user: req.params.id },
+        { user: userId },
         {
           language,
           emailPrompt: emailPrompt === "true",
@@ -324,7 +344,8 @@ const userController = {
         { new: true }
       ).lean();
 
-      const userData = { ...updateUser, ...updateUserSetting };
+      const { _id: _sid, user: _suser, __v: _sv, ...updateSettingData } = updateUserSetting ?? {};
+      const userData = { userId: updateUser._id, ...updateSettingData, ...updateUser };
       return res.status(200).json(userData);
     } catch (error) {
       return res
@@ -337,7 +358,7 @@ const userController = {
     const { theme } = req.body;
     try {
       const result = await UserSetting.findOneAndUpdate(
-        { user: req.params.id },
+        { user: req.user.userId },
         { theme },
         { new: true }
       ).lean();
@@ -351,7 +372,7 @@ const userController = {
   /** 個人-刪除使用者 */
   deleteUser: async (req, res) => {
     try {
-      await User.findByIdAndDelete(req.params.id);
+      await User.findByIdAndDelete(req.user.userId);
       return res.json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
       return res

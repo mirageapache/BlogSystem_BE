@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const articleController = require("../../controllers/articleController");
 const { uploadMulter } = require("../../middleware/fileUtils");
-const { authorization } = require("../../middleware/auth");
+const { authorization, requireMember } = require("../../middleware/auth");
 
 /** 取得所有文章 */
 router.get("/", articleController.getAllArticle);
@@ -18,27 +18,35 @@ router.post("/detail", articleController.getArticleDetail);
 
 /** 新增文章 */
 router.post(
-  "/create/:id",
+  "/create",
   authorization,
+  requireMember,
   uploadMulter,
   articleController.createArticle
 );
 
 /** 更新文章 */
 router.patch(
-  "/update/:id",
+  "/update",
   authorization,
+  requireMember,
   uploadMulter,
   articleController.updateArticle
 );
 
 /** 刪除文章 */
-router.delete("/delete/:id", authorization, articleController.deleteArticle);
+router.delete(
+  "/delete",
+  authorization,
+  requireMember,
+  articleController.deleteArticle
+);
 
 /** 喜歡/取消喜歡文章 */
 router.patch(
-  "/toggleLikeAction/:id",
+  "/toggleLikeAction",
   authorization,
+  requireMember,
   articleController.toggleLikeArticle
 );
 

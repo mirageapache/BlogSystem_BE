@@ -1,4 +1,7 @@
+const mongoose = require("mongoose");
 const Follow = require("../models/follow");
+
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === String(id);
 
 const followController = {
   /** 取得追蹤清單(user是追蹤人的情況) */
@@ -7,6 +10,10 @@ const followController = {
     const page = parseInt(req.body.page) || 1;
     const limit = parseInt(req.body.limit) || 20;
     const skip = (page - 1) * limit;
+
+    if (!isValidId(userId))
+      return res.status(200).json({ followList: [], nextPage: -1, totalUser: 0 });
+
     try {
       const followedList = await Follow.find({ follower: userId })
         .select("followed followState")
@@ -31,11 +38,9 @@ const followController = {
       const totalPages = Math.ceil(total / limit);
       const nextPage = page + 1 > totalPages ? -1 : page + 1;
 
-      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有追蹤" });
-
       return res.status(200).json({
         followList: followListData,
-        nextPage,
+        nextPage: total === 0 ? -1 : nextPage,
         totalUser: total,
       });
     } catch (error) {
@@ -48,6 +53,10 @@ const followController = {
     const page = parseInt(req.body.page) || 1;
     const limit = parseInt(req.body.limit) || 20;
     const skip = (page - 1) * limit;
+
+    if (!isValidId(userId))
+      return res.status(200).json({ followList: [], nextPage: -1, totalUser: 0 });
+
     try {
       const followerList = await Follow.find({ followed: userId })
         .select("user:follower followState")
@@ -64,15 +73,13 @@ const followController = {
         return { ...follow.follower, followState: follow.followState };
       });
 
-      const total = await Follow.countDocuments({ follower: userId });
+      const total = await Follow.countDocuments({ followed: userId });
       const totalPages = Math.ceil(total / limit);
       const nextPage = page + 1 > totalPages ? -1 : page + 1;
 
-      if (total === 0) return res.status(404).json({ code: "NOT_FOUND", message: "沒有粉絲" });
-
       return res.status(200).json({
         followList: followListData,
-        nextPage,
+        nextPage: total === 0 ? -1 : nextPage,
         totalUser: total,
       });
     } catch (error) {
@@ -80,12 +87,17 @@ const followController = {
     }
   },
   /** 追蹤
-   * @param userId 當前(操作)使用者id
    * @param targetId 被新增追縱/取消追蹤的使用者id
    */
   followUser: async (req, res) => {
-    const { userId, targetId } = req.body;
+    const { targetId } = req.body;
+    const userId = req.user.userId;
     try {
+      if (!isValidId(targetId))
+        return res.status(400).json({ code: "INVALID", message: "目標使用者不存在" });
+      if (userId === targetId)
+        return res.status(400).json({ code: "INVALID", message: "無法追蹤自己" });
+
       // 檢查是否已經存在追蹤關係
       const existingFollow = await Follow.findOne({
         follower: userId,
@@ -102,13 +114,15 @@ const followController = {
     }
   },
   /** 取消追蹤
-   * @param userId 當前(操作)使用者id
    * @param targetId 被新增追縱/取消追蹤的使用者id
    */
   unfollowUser: async (req, res) => {
-    const { userId, targetId } = req.body;
+    const { targetId } = req.body;
+    const userId = req.user.userId;
     try {
-      // 檢查是否存在追蹤關係
+      if (!isValidId(targetId))
+        return res.status(400).json({ code: "INVALID", message: "目標使用者不存在" });
+
       const existingFollow = await Follow.findOne({
         follower: userId,
         followed: targetId,
@@ -124,14 +138,17 @@ const followController = {
     }
   },
   /** 更新訂閱狀態
-   * @param currentId 當前(操作)使用者id
    * @param targetId 被追縱/取消追蹤的使用者id
    * @param state 追蹤狀態
    */
   changeFollowState: async (req, res) => {
-    const { userId, targetId, state } = req.body;
+    const { targetId, state } = req.body;
+    const userId = req.user.userId;
 
     try {
+      if (!isValidId(targetId))
+        return res.status(400).json({ code: "INVALID", message: "目標使用者不存在" });
+
       const FollowData = await Follow.findOneAndUpdate(
         { follower: userId, followed: targetId },
         { followState: state },

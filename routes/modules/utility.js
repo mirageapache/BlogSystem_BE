@@ -11,4 +11,7 @@ router.post("/encode", utilityController.encode);
 /** 字串解密 */
 router.post("/decode", utilityController.decode);
 
+/** 上傳圖片 */
+router.post("/uploadImage", utilityController.uploadImage);
+
 module.exports = router;

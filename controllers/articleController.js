@@ -57,12 +57,9 @@ const articleController = {
       const totalArticle = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalArticle ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0)
-        return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
-
       return res.status(200).json({
         articles,
-        nextPage: nextPage,
+        nextPage: total === 0 ? -1 : nextPage,
         totalArticle: total,
       });
     } catch (error) {
@@ -123,12 +120,9 @@ const articleController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0)
-        return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
-
       return res.status(200).json({
         articles,
-        nextPage,
+        nextPage: total === 0 ? -1 : nextPage,
         totalArticle: total,
       });
     } catch (error) {
@@ -182,15 +176,14 @@ const articleController = {
   },
   /** 新增文章 */
   createArticle: async (req, res) => {
-    const { userId, title, content, subject = "", hashTags, clientType } = req.body;
+    const { title, content, subject = "", hashTags, clientType } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
 
     try {
-      // Vue 專案發送的請求，需要將 Tiptap 格式轉換為 Draft.js 格式
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
 
       const newArticle = await Article.create({
-        author: userId,
+        author: req.user.userId,
         title,
         content: articleContent,
         status: 0,
@@ -212,7 +205,6 @@ const articleController = {
   updateArticle: async (req, res) => {
     const {
       articleId,
-      userId,
       title,
       content,
       subject = "",
@@ -220,26 +212,19 @@ const articleController = {
       clientType
     } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    if (req.file) {
-      await cloudinaryUpload(req) // upload avatar to cloudinary
-        .then((image) => {
-          avatarPath = image.secure_url;
-        })
-        .catch((error) => {
-          return res
-            .status(500)
-            .json({ code: "UPLOAD_IMG_ERR", message: error.message });
-        });
-    }
 
     try {
-      // Vue 專案發送的請求，需要將 Tiptap 格式轉換為 Draft.js 格式
+      const existing = await Article.findById(articleId).select("author").lean();
+      if (!existing)
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
+      if (existing.author.toString() !== req.user.userId)
+        return res.status(403).json({ code: "FORBIDDEN", message: "無權限編輯此文章" });
+
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
 
       const updatedArticle = await Article.findByIdAndUpdate(
         articleId,
         {
-          author: userId,
           title,
           content: articleContent,
           status: 0,
@@ -260,7 +245,14 @@ const articleController = {
   /** 刪除文章 */
   deleteArticle: async (req, res) => {
     try {
-      await Article.findByIdAndDelete(req.body.articleId);
+      const articleId = req.body.articleId;
+      const existing = await Article.findById(articleId).select("author").lean();
+      if (!existing)
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
+      if (existing.author.toString() !== req.user.userId)
+        return res.status(403).json({ code: "FORBIDDEN", message: "無權限刪除此文章" });
+
+      await Article.findByIdAndDelete(articleId);
       return res.status(200).json({
         code: "DELETE_SUCCESS",
         message: "文章刪除成功",
@@ -273,22 +265,22 @@ const articleController = {
   },
   /** 喜歡/取消喜歡 文章
    * @param articleId 文章Id
-   * @param userId 使用者Id
    * @param action true / false
    */
   toggleLikeArticle: async (req, res) => {
-    const { articleId, userId, action } = req.body;
+    const { articleId, action } = req.body;
+    const userId = req.user.userId;
 
     try {
       const articleData = await Article.findById(articleId);
+      if (!articleData)
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
       const likeList = articleData.likedByUsers;
       let newLikeList = likeList.map((obj) => obj.toString());
 
       if (action) {
-        // like action
         if (!newLikeList.includes(userId)) newLikeList.push(userId);
       } else {
-        // unlike action
         const rmIndex = newLikeList.indexOf(userId);
         if (rmIndex !== -1) newLikeList.splice(rmIndex, 1);
       }
