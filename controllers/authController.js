@@ -108,6 +108,7 @@ const loginController = {
       }
 
       const userSetting = await UserSetting.findOne({ user: user._id }).lean();
+      const { _id: _sid, user: _suser, __v: _sv, ...userSettingData } = userSetting ?? {};
       // 產生 JWT token 並寫入 httpOnly cookie
       const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
         expiresIn: "7d",
@@ -124,6 +125,7 @@ const loginController = {
         code: "SUCCESS",
         message: "登入成功",
         userData: {
+          _id: user._id,
           userId: user._id,
           email: user.email,
           account: user.account,
@@ -135,7 +137,7 @@ const loginController = {
           bgColor: user.bgColor,
           bio: user.bio,
           createdAt: user.createdAt,
-          ...userSetting,
+          ...userSettingData,
         },
       });
     } catch (error) {
@@ -230,11 +232,11 @@ const loginController = {
     }
   },
   /** 身分驗證
-   * 使用userId及authToken進行驗證
+   * 僅以 authToken (JWT) 為驗證來源，不採信 body 傳入的 id
    */
   checkAuth: async (req, res) => {
     try {
-      const user = await User.findById(req.body.id).lean();
+      const user = await User.findById(req.user.userId).lean();
       if (!user) {
         return res.status(401).json({ code: "TOKEN_ERR", message: "驗證錯誤" });
       }
@@ -260,9 +262,11 @@ const loginController = {
         return res.status(404).json({ code: "USER_NOT_FOUND", message: "使用者不存在" });
 
       const userSetting = await UserSetting.findOne({ user: userId }).lean();
+      const { _id: _sid, user: _suser, __v: _sv, ...userSettingData } = userSetting ?? {};
       return res.status(200).json({
         code: "SUCCESS",
         userData: {
+          _id: user._id,
           userId: user._id,
           email: user.email,
           account: user.account,
@@ -274,7 +278,7 @@ const loginController = {
           bgColor: user.bgColor,
           bio: user.bio,
           createdAt: user.createdAt,
-          ...userSetting,
+          ...userSettingData,
         },
       });
     } catch (error) {

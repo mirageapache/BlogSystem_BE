@@ -67,12 +67,9 @@ const postController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0)
-        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
-
       return res.status(200).json({
         posts,
-        nextPage: nextPage,
+        nextPage: total === 0 ? -1 : nextPage,
         totalPosts: total,
       });
     } catch (error) {
@@ -137,12 +134,9 @@ const postController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0)
-        return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
-
       return res.status(200).json({
         posts,
-        nextPage: nextPage,
+        nextPage: total === 0 ? -1 : nextPage,
         totalPosts: total,
       });
     } catch (error) {
@@ -194,26 +188,26 @@ const postController = {
 
   /** 新增貼文 */
   createPost: async (req, res) => {
-    const { author, content, status, hashTags } = req.body;
+    const { content, status, hashTags } = req.body;
     const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    let publicId = ""; // cloudinary的 public_id 後續再做圖片編輯或刪除時用的
+    let publicId = "";
     let imagePath = "";
 
     try {
       if (req.file) {
-        const uploadResult = await cloudinaryUpload(req); // upload image to cloudinary
+        const uploadResult = await cloudinaryUpload(req);
         publicId = uploadResult.public_id;
         imagePath = uploadResult.secure_url;
       }
 
       const newPost = await Post.create({
-        author,
+        author: req.user.userId,
         content,
         image: imagePath,
         imageId: publicId,
         status: parseInt(status),
         hashTags: hashTagArr,
-        createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(), // 轉換時區時間
+        createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
       });
       return res.status(200).json(newPost);
     } catch (error) {
@@ -233,14 +227,20 @@ const postController = {
     let imagePath = image;
 
     try {
+      const existing = await Post.findById(postId).select("author").lean();
+      if (!existing)
+        return res.status(404).json({ code: "NOT_FOUND", message: "貼文不存在" });
+      if (existing.author.toString() !== req.user.userId)
+        return res.status(403).json({ code: "FORBIDDEN", message: "無權限編輯此貼文" });
+
       if (req.file) {
         if (isEmpty(publicId)) {
-          const uploadResult = await cloudinaryUpload(req); // upload image to cloudinary
+          const uploadResult = await cloudinaryUpload(req);
           publicId = uploadResult.public_id;
           imagePath = uploadResult.secure_url;
         } else {
-          const uploadResult = await cloudinaryUpdate(req, publicId); // update avatar to cloudinary
-          avatarPath = uploadResult.secure_url;
+          const uploadResult = await cloudinaryUpdate(req, publicId);
+          imagePath = uploadResult.secure_url;
         }
       }
 
@@ -276,7 +276,14 @@ const postController = {
   /** 刪除貼文 */
   deletePost: async (req, res) => {
     try {
-      await Post.findByIdAndDelete(req.body.postId);
+      const postId = req.body.postId;
+      const existing = await Post.findById(postId).select("author").lean();
+      if (!existing)
+        return res.status(404).json({ code: "NOT_FOUND", message: "貼文不存在" });
+      if (existing.author.toString() !== req.user.userId)
+        return res.status(403).json({ code: "FORBIDDEN", message: "無權限刪除此貼文" });
+
+      await Post.findByIdAndDelete(postId);
       return res
         .status(200)
         .json({ code: "DELETE_SUCCESS", message: "刪除成功" });
@@ -289,22 +296,22 @@ const postController = {
 
   /** 喜歡/取消喜歡 貼文
    * @param postId 貼文Id
-   * @param userId 使用者Id
    * @param action true / false
    */
   toggleLikePost: async (req, res) => {
-    const { postId, userId, action } = req.body;
+    const { postId, action } = req.body;
+    const userId = req.user.userId;
 
     try {
       const postData = await Post.findById(postId);
+      if (!postData)
+        return res.status(404).json({ code: "NOT_FOUND", message: "貼文不存在" });
       const likeList = postData.likedByUsers;
       let newLikeList = likeList.map((obj) => obj.toString());
 
       if (action) {
-        // like action
         if (!newLikeList.includes(userId)) newLikeList.push(userId);
       } else {
-        // unlike action
         const rmIndex = newLikeList.indexOf(userId);
         if (rmIndex !== -1) newLikeList.splice(rmIndex, 1);
       }
@@ -340,11 +347,11 @@ const postController = {
   /** 收藏/取消收藏 貼文
    * === 該功能目前不使用 ===
    * @param postId 貼文Id
-   * @param userId 使用者Id
    * @param action true / false
    */
   toggleStorePost: async (req, res) => {
-    const { postId, userId, action } = req.body;
+    const { postId, action } = req.body;
+    const userId = req.user.userId;
     // 1.更新post 收藏數
     // 2.更新user 的post收藏清單
     try {

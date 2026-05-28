@@ -43,11 +43,11 @@ const commentController = {
 
   /** 新增留言 */
   createComment: async (req, res) => {
-    const { id, userId, content, route } = req.body;
+    const { id, content, route } = req.body;
     try {
       // 在DB建立留言資料
       const comment = await Comment.create({
-        author: userId,
+        author: req.user.userId,
         content,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
       });
@@ -91,6 +91,12 @@ const commentController = {
   editComment: async (req, res) => {
     const { content } = req.body;
     try {
+      const existing = await Comment.findById(req.params.id).select("author").lean();
+      if (!existing)
+        return res.status(404).json({ code: "NOT_FOUND", message: "留言不存在" });
+      if (existing.author.toString() !== req.user.userId)
+        return res.status(403).json({ code: "FORBIDDEN", message: "無權限編輯此留言" });
+
       const updatedComment = await Comment.findByIdAndUpdate(
         req.params.id,
         { content },
@@ -107,7 +113,14 @@ const commentController = {
   /** 刪除留言 */
   deleteComment: async (req, res) => {
     try {
-      await Comment.findByIdAndDelete(req.body.postId);
+      const commentId = req.params.id;
+      const existing = await Comment.findById(commentId).select("author").lean();
+      if (!existing)
+        return res.status(404).json({ code: "NOT_FOUND", message: "留言不存在" });
+      if (existing.author.toString() !== req.user.userId)
+        return res.status(403).json({ code: "FORBIDDEN", message: "無權限刪除此留言" });
+
+      await Comment.findByIdAndDelete(commentId);
       return res.status(200).json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
       return res
