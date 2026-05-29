@@ -277,7 +277,7 @@ const userController = {
       account,
       bio,
       avatar,
-      avatarId, // pulibic_id
+      avatarId, // public_id
       removeAvatar, // true 表示要移除avatar
       language,
       emailPrompt,
@@ -286,6 +286,23 @@ const userController = {
     let avatarPath = avatar; // 大頭照url
     let publicId = avatarId; // 大頭照id
     try {
+      if (email) {
+        const checkResult = await emailExisted(email, userId);
+        if (checkResult)
+          return res.status(401).json({ code: "EMAIL_EXISTED", message: "該Email已存在" });
+      }
+      if (account) {
+        const checkResult = await accountExisting(account, userId);
+        if (checkResult)
+          return res.status(401).json({ code: "ACCOUNT_EXISTED", message: "該帳號名稱已存在" });
+      }
+
+      if (req.file && removeAvatar === "true") {
+        return res
+          .status(400)
+          .json({ code: "INVALID_PARAM", message: "不可同時上傳圖片與移除大頭照" });
+      }
+
       if (req.file) {
         if (isEmpty(publicId)) {
           const uploadResult = await cloudinaryUpload(req);
@@ -301,17 +318,6 @@ const userController = {
         await cloudinaryRemove(publicId);
         avatarPath = "";
         publicId = "";
-      }
-
-      if (email) {
-        const checkResult = await emailExisted(email, userId);
-        if (checkResult)
-          return res.status(401).json({ code: "EMAIL_EXISTED", message: "該Email已存在" });
-      }
-      if (account) {
-        const checkResult = await accountExisting(account, userId);
-        if (checkResult)
-          return res.status(401).json({ code: "ACCOUNT_EXISTED", message: "該帳號名稱已存在" });
       }
 
       // 更新User Info

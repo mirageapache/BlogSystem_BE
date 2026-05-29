@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const { body } = require("express-validator");
 const User = require("../../models/user");
 const { getRandomInt } = require("../mathUtils");
-if (process.env.NODE_ENV !== "production") require("dotenv").config();
 
 /** email 驗證 */
 const validateEmail = [

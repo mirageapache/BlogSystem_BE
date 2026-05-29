@@ -7,12 +7,6 @@ const fs = require("fs");
 const cloudinary = require("cloudinary").v2;
 const cryptoSecret = process.env.CRYPTO_SECRET;
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 const utilityController = {
   /** 搜尋結果數量 */
   searchCount: async (req, res) => {

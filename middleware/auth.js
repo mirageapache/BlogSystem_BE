@@ -1,5 +1,4 @@
 const jwt = require("jsonwebtoken");
-if (process.env.NODE_ENV !== "production") require("dotenv").config();
 
 /** authToken 驗證
  * 僅信任 JWT 來源的身份，將解析結果寫入 req.user。
