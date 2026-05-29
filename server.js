@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
+const multer = require("multer");
 const port = process.env.PORT || 3000;
 const routes = require("./routes");
 
@@ -39,6 +40,30 @@ db.on("error", (err) => {
 
 // 路由設定
 app.use(routes);
+
+// 404 fallback
+app.use((req, res) => {
+  return res.status(404).json({ code: "NOT_FOUND", message: "找不到路由" });
+});
+
+// 全域錯誤處理
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res
+      .status(400)
+      .json({ code: "UPLOAD_ERR", message: err.message });
+  }
+  if (err && err.isOperational) {
+    return res
+      .status(err.statusCode || 400)
+      .json({ code: "VALIDATION_ERR", message: err.message });
+  }
+  console.error(err);
+  return res
+    .status(500)
+    .json({ code: "SYSTEM_ERR", message: "伺服器發生錯誤" });
+});
 
 // 伺服器監聽
 app.listen(port, () => {

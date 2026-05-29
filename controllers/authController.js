@@ -78,6 +78,11 @@ const loginController = {
 
       return res.status(200).json({ code: "SUCCESS", message: "註冊成功" });
     } catch (error) {
+      if (error.code === 11000) {
+        return res
+          .status(401)
+          .json({ code: "EMAIL_EXISTED", message: "Email已被註冊" });
+      }
       return res
         .status(500)
         .json({ code: "SYSTEM_ERR", message: error.message });
@@ -159,38 +164,28 @@ const loginController = {
         expiresIn: "30m",
       });
       const resetPasswordLink = `${process.env.FRONTEND_URL}/reset_password/${urlToken}`;
-      const mailOne = process.env.MAIL_ONE;
 
-      // Mailgun 郵件內容
-      mg.messages
-        .create(process.env.MAILGUN_DOMAIN, {
-          from: `ReactBlog <noreply@${process.env.MAILGUN_DOMAIN}>`,
-          to: mailOne, // user.email, 為了demo方便，暫時都寄到mailOne處理
-          subject: "ReactBlog - 重設您的密碼",
-          html: `
+      await mg.messages.create(process.env.MAILGUN_DOMAIN, {
+        from: `ReactBlog <noreply@${process.env.MAILGUN_DOMAIN}>`,
+        to: user.email,
+        subject: "ReactBlog - 重設您的密碼",
+        html: `
             <p>你已提出重設密碼的需求，請點擊下方連結來重設密碼</p>
-            <p>提醒你，連結僅10分鐘有效！</p>
+            <p>提醒你，連結僅30分鐘有效！</p>
             <a href="${resetPasswordLink}">${resetPasswordLink}</a>
             <br>
             <br>
             <hr>
             <p>-若你未提出重設密碼要求，請忽略本信件-</p>
           `,
-          // 啟用追蹤功能（選用）
-          "o:tracking": "yes",
-          "o:tracking-clicks": "yes",
-          "o:tracking-opens": "yes",
-        })
-        .then((msg) => {
-          return res
-            .status(200)
-            .json({ code: "SUCCESS", message: "已發送重置密碼Email" });
-        })
-        .catch((err) => {
-          return res
-            .status(500)
-            .json({ code: "SEND_EMAIL_ERR", message: err.message });
-        });
+        "o:tracking": "yes",
+        "o:tracking-clicks": "yes",
+        "o:tracking-opens": "yes",
+      });
+
+      return res
+        .status(200)
+        .json({ code: "SUCCESS", message: "已發送重置密碼Email" });
     } catch (error) {
       return res
         .status(500)
@@ -246,12 +241,6 @@ const loginController = {
         .status(500)
         .json({ code: "SYSTEM_ERR", message: error.message });
     }
-  },
-  /** 密碼加密(測試用) */
-  passwordEncode: async (req, res) => {
-    const password = req.body.password;
-    const hashedPwd = bcrypt.hashSync(password, process.env.SALT_ROUNDS);
-    return res.status(200).json({ code: "SUCCESS", hashedPwd });
   },
   /** 取得目前登入使用者資料 */
   getCurrentUser: async (req, res) => {

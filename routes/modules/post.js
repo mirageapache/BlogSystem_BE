@@ -50,14 +50,6 @@ router.patch(
   postController.toggleLikePost
 );
 
-/** 收藏/取消收藏貼文 */
-router.patch(
-  "/toggleStoreAction",
-  authorization,
-  requireMember,
-  postController.toggleStorePost
-);
-
 /** 取得(搜尋)hashTag資料 */
 router.post("/hashTag", postController.getHashTag);
 

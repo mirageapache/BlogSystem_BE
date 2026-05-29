@@ -1,6 +1,5 @@
 const moment = require("moment-timezone");
 const { isEmpty } = require("lodash");
-const { imgurFileHandler } = require("../middleware/fileUtils");
 const Article = require("../models/article");
 const { convertDraftToTiptap, convertTiptapToDraft } = require('../middleware/articleUtils');
 

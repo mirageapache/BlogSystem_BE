@@ -110,6 +110,9 @@ const followController = {
 
       return res.status(200).json({ code: "SUCCESS", message: "追蹤成功" });
     } catch (error) {
+      if (error.code === 11000) {
+        return res.status(401).json({ code: "FOLLOWED", message: "已追蹤" });
+      }
       return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
     }
   },

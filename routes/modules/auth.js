@@ -26,9 +26,6 @@ router.post("/checkAuth", authorization, authController.checkAuth);
 /** 取得目前使用者資料 */
 router.get("/me", authorization, authController.getCurrentUser);
 
-/** 密碼加密 */
-router.post("/hashPwd", authController.passwordEncode);
-
 /** 訪客登入 */
 router.post("/guest", authController.guestLogin);
 

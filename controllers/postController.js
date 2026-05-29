@@ -6,7 +6,6 @@ const {
   cloudinaryRemove,
 } = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
-const UserSetting = require("../models/userSetting");
 
 const postController = {
   /** 取得所有貼文 */
@@ -337,57 +336,6 @@ const postController = {
       return res
         .status(200)
         .json({ code: "SUCCESS", message: "操作成功", updateResult });
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ code: "SYSTEM_ERR", message: error.message });
-    }
-  },
-
-  /** 收藏/取消收藏 貼文
-   * === 該功能目前不使用 ===
-   * @param postId 貼文Id
-   * @param action true / false
-   */
-  toggleStorePost: async (req, res) => {
-    const { postId, action } = req.body;
-    const userId = req.user.userId;
-    // 1.更新post 收藏數
-    // 2.更新user 的post收藏清單
-    try {
-      let collectionCount = await Post.findById(postId)
-        .select("collectionCount")
-        .lean(); // 取得貼文的收藏數
-      let postCollect = await UserSetting.findOne({ user: userId })
-        .select("postCollect")
-        .lean(); // 取得user的貼文收藏清單
-
-      if (action) {
-        // store action
-        if (!postCollect.includes(postId)) {
-          postCollect.push(postId);
-          collectionCount++;
-        }
-      } else {
-        // unsotre action
-        const rmIndex = postCollect.indexOf(postId);
-        if (rmIndex !== -1) {
-          postCollect.splice(rmIndex, 1);
-          collectionCount--;
-          if (collectionCount < 0) collectionCount = 0;
-        }
-      }
-
-      // 回寫至DB
-      UserSetting.findByIdAndUpdate({ user: userId }, { postCollect });
-
-      const newPostData = await Post.findByIdAndUpdate(
-        postId,
-        { collectionCount },
-        { new: true }
-      );
-
-      return res.status(200).json({ message: "succeess", newPostData });
     } catch (error) {
       return res
         .status(500)

@@ -7,6 +7,8 @@ const UserSchema = new Schema({
   email: {
     type: String,
     required: true,
+    unique: true,
+    index: true,
   },
   /** 密碼 */
   password: {
@@ -17,6 +19,8 @@ const UserSchema = new Schema({
   account: {
     type: String,
     required: true,
+    unique: true,
+    index: true,
   },
   /** 名稱(暱稱) */
   name: {

@@ -14,6 +14,9 @@ const {
   accountExisting,
 } = require("../middleware/validator/userValidation");
 const Follow = require("../models/follow");
+const Article = require("../models/article");
+const Post = require("../models/post");
+const Comment = require("../models/comment");
 
 const userController = {
   /** 取得所有使用者 */
@@ -375,10 +378,82 @@ const userController = {
         .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
-  /** 個人-刪除使用者 */
+  /** 個人-刪除使用者
+   * 連動清理：UserSetting、Follow(雙向)、Article、Post、Comment、Cloudinary 圖片
+   */
   deleteUser: async (req, res) => {
+    const userId = req.user.userId;
     try {
-      await User.findByIdAndDelete(req.user.userId);
+      const user = await User.findById(userId).lean();
+      if (!user)
+        return res
+          .status(404)
+          .json({ code: "NOT_FOUND", message: "沒使用者" });
+
+      // 蒐集所有要從 Cloudinary 移除的 publicId
+      const cloudinaryIds = [];
+      if (user.avatarId) cloudinaryIds.push(user.avatarId);
+      const userPosts = await Post.find({ author: userId })
+        .select("imageId")
+        .lean();
+      userPosts.forEach((p) => {
+        if (p.imageId) cloudinaryIds.push(p.imageId);
+      });
+
+      // 蒐集要刪除的 comment ids（用於後續從 Post/Article.comments 移除引用）
+      const userComments = await Comment.find({ author: userId })
+        .select("_id")
+        .lean();
+      const commentIds = userComments.map((c) => c._id);
+
+      // 平行刪除各 collection 資料
+      await Promise.all([
+        UserSetting.deleteOne({ user: userId }),
+        Follow.deleteMany({
+          $or: [{ follower: userId }, { followed: userId }],
+        }),
+        Article.deleteMany({ author: userId }),
+        Post.deleteMany({ author: userId }),
+        Comment.deleteMany({ author: userId }),
+        // 把使用者留言從其他 post/article 的 comments 引用中移除
+        commentIds.length
+          ? Post.updateMany(
+              { comments: { $in: commentIds } },
+              { $pull: { comments: { $in: commentIds } } }
+            )
+          : Promise.resolve(),
+        commentIds.length
+          ? Article.updateMany(
+              { comments: { $in: commentIds } },
+              { $pull: { comments: { $in: commentIds } } }
+            )
+          : Promise.resolve(),
+        // 將使用者按讚紀錄從文章/貼文中移除
+        Article.updateMany(
+          { likedByUsers: userId },
+          { $pull: { likedByUsers: userId } }
+        ),
+        Post.updateMany(
+          { likedByUsers: userId },
+          { $pull: { likedByUsers: userId } }
+        ),
+      ]);
+
+      await User.findByIdAndDelete(userId);
+
+      // Cloudinary 圖片清理（best-effort，失敗不阻擋）
+      await Promise.allSettled(
+        cloudinaryIds.map((id) => cloudinaryRemove(id))
+      );
+
+      // 清除 cookie
+      const isProd = process.env.NODE_ENV === "production";
+      res.clearCookie("authToken", {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "None" : "Lax",
+      });
+
       return res.json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
       return res
