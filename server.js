@@ -10,6 +10,9 @@ const routes = require("./routes");
 
 const app = express();
 
+// 部署在 Vercel/反向代理之後，信任第一層 proxy 以正確取得 client IP（供 rate limit 使用）
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: [
@@ -30,7 +33,7 @@ mongoose.set("strictQuery", false);
 mongoose.connect(process.env.MONGODB_URI);
 const db = mongoose.connection;
 
-db.once("once", () => {
+db.once("open", () => {
   console.log("mongodb is connected!");
 });
 

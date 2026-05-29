@@ -1,4 +1,14 @@
+const mongoose = require("mongoose");
 const { getRandomInt } = require("./mathUtils");
+
+/** 驗證是否為合法的 MongoDB ObjectId */
+const isValidId = (id) =>
+  mongoose.Types.ObjectId.isValid(id) &&
+  String(new mongoose.Types.ObjectId(id)) === String(id);
+
+/** escape 使用者輸入中的 regex 特殊字元，避免 Regex Injection / ReDoS */
+const escapeRegExp = (str = "") =>
+  String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** 亂數產生大頭貼背景顏色 */
 const getRandomColor = () => {
@@ -11,5 +21,7 @@ const getRandomColor = () => {
 }
 
 module.exports = {
-  getRandomColor
+  getRandomColor,
+  isValidId,
+  escapeRegExp,
 };

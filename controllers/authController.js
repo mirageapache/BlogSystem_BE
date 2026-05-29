@@ -114,10 +114,12 @@ const loginController = {
 
       const userSetting = await UserSetting.findOne({ user: user._id }).lean();
       const { _id: _sid, user: _suser, __v: _sv, ...userSettingData } = userSetting ?? {};
-      // 產生 JWT token 並寫入 httpOnly cookie
-      const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-      });
+      // 產生 JWT token 並寫入 httpOnly cookie（帶入 tokenVersion 供失效機制比對）
+      const authToken = jwt.sign(
+        { userId: user._id, tokenVersion: user.tokenVersion ?? 0 },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
       const isProd = process.env.NODE_ENV === "production";
       res.cookie("authToken", authToken, {
         httpOnly: true,
@@ -214,10 +216,13 @@ const loginController = {
           .json({ code: "PWD_UNMATCH", message: "新密碼與確認密碼不相符" });
       }
 
-      // 更新用戶密碼
+      // 更新用戶密碼，並遞增 tokenVersion 使所有舊 token 失效
       const salt = Number.parseInt(process.env.SALT_ROUNDS);
       const hashedPwd = bcrypt.hashSync(password, salt);
-      await User.findByIdAndUpdate(user.id, { password: hashedPwd });
+      await User.findByIdAndUpdate(user.id, {
+        password: hashedPwd,
+        $inc: { tokenVersion: 1 },
+      });
 
       return res.status(200).json({ code: "SUCCESS", message: "密碼重設成功" });
     } catch (error) {
@@ -308,6 +313,19 @@ const loginController = {
   },
   /** 登出 */
   signOut: async (req, res) => {
+    // 嘗試從 cookie 解析出使用者並遞增 tokenVersion，使該 token 立即失效（訪客略過）
+    const token = req.cookies?.authToken;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded?.userId && decoded.userId !== "guest" && decoded.role !== "guest") {
+          await User.findByIdAndUpdate(decoded.userId, { $inc: { tokenVersion: 1 } });
+        }
+      } catch (e) {
+        // token 無效或過期，無須遞增，直接清除 cookie 即可
+      }
+    }
+
     const isProd = process.env.NODE_ENV === "production";
     res.clearCookie("authToken", {
       httpOnly: true,

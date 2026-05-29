@@ -4,9 +4,6 @@ const articleController = require("../../controllers/articleController");
 const { uploadMulter } = require("../../middleware/fileUtils");
 const { authorization, requireMember } = require("../../middleware/auth");
 
-/** 取得所有文章 */
-router.get("/", articleController.getAllArticle);
-
 /** (動態)取得文章 */
 router.post("/partial", articleController.getPartialArticle);
 

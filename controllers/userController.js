@@ -1,6 +1,7 @@
 const { isEmpty } = require("lodash");
 const mongoose = require("mongoose");
 const User = require("../models/user");
+const { escapeRegExp } = require("../middleware/commonUtils");
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === String(id);
 const UserSetting = require("../models/userSetting");
@@ -19,17 +20,6 @@ const Post = require("../models/post");
 const Comment = require("../models/comment");
 
 const userController = {
-  /** 取得所有使用者 */
-  getAllUserList: async (req, res) => {
-    try {
-      const users = await User.find().select("-password").lean();
-      return res.status(200).json(users);
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ code: "SYSTEM_ERR", message: error.message });
-    }
-  },
   /** 取得搜尋使用者清單(含追蹤資料) */
   getSearchUserList: async (req, res) => {
     const { searchString } = req.body;
@@ -40,11 +30,12 @@ const userController = {
     let variable = {};
 
     if (!isEmpty(searchString)) {
+      const safe = escapeRegExp(searchString);
       // $or 是mongoose的搜尋條件語法
       variable = {
         $or: [
-          { account: new RegExp(searchString, "i") },
-          { name: new RegExp(searchString, "i") },
+          { account: new RegExp(safe, "i") },
+          { name: new RegExp(safe, "i") },
         ],
       };
     }

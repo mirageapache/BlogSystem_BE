@@ -58,6 +58,11 @@ const UserSchema = new Schema({
     type: Number,
     default: 0,
   },
+  /** Token 版本：登出 / 重設密碼時遞增，使舊發出的 JWT 立即失效 */
+  tokenVersion: {
+    type: Number,
+    default: 0,
+  },
 });
 
 module.exports = mongoose.model("User", UserSchema);

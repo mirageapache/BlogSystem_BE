@@ -8,9 +8,6 @@ const {
   validateAccount,
 } = require("../../middleware/validator/userValidation");
 
-/** 取得所有使用者 */
-router.get("/", userController.getAllUserList);
-
 /** 取得搜尋使用者清單(含追蹤資料) */
 router.post("/getSearchUserList", optionalAuth, userController.getSearchUserList);
 

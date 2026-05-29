@@ -6,19 +6,20 @@ const {
   validateEmail,
   validatePassword,
 } = require("../../middleware/validator/userValidation");
+const { authLimiter, mailLimiter } = require("../../middleware/rateLimiter");
 const authController = require("../../controllers/authController");
 
 /** 註冊 */
-router.post("/signup", [validateEmail, validatePassword], authController.signUp);
+router.post("/signup", authLimiter, [validateEmail, validatePassword], authController.signUp);
 
 /** 登入 */
-router.post("/signin", [validateEmail, validatePassword], authController.signIn);
+router.post("/signin", authLimiter, [validateEmail, validatePassword], authController.signIn);
 
 /** 找回密碼 */
-router.post("/findpwd", [validateEmail], authController.findPassword);
+router.post("/findpwd", mailLimiter, [validateEmail], authController.findPassword);
 
 /** 重設密碼 */
-router.post("/resetpwd", [validatePassword], authController.resetPassword);
+router.post("/resetpwd", authLimiter, [validatePassword], authController.resetPassword);
 
 /** 身分驗證 */
 router.post("/checkAuth", authorization, authController.checkAuth);
