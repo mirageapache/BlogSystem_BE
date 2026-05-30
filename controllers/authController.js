@@ -10,7 +10,7 @@ const User = require("../models/user");
 const Follow = require("../models/follow");
 const UserSetting = require("../models/userSetting");
 // --- functions ---
-const { getRandomColor } = require("../middleware/commonUtils");
+const { getRandomColor, getCookieOptions } = require("../middleware/commonUtils");
 const {
   checkAccountExist,
   emailExisted,
@@ -120,13 +120,11 @@ const loginController = {
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
       );
-      const isProd = process.env.NODE_ENV === "production";
-      res.cookie("authToken", authToken, {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: isProd ? "None" : "Lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7天
-      });
+      res.cookie(
+        "authToken",
+        authToken,
+        getCookieOptions({ maxAge: 7 * 24 * 60 * 60 * 1000 }) // 7天
+      );
 
       return res.status(200).json({
         code: "SUCCESS",
@@ -288,13 +286,11 @@ const loginController = {
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
       );
-      const isProd = process.env.NODE_ENV === "production";
-      res.cookie("authToken", guestToken, {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: isProd ? "None" : "Lax",
-        maxAge: 60 * 60 * 1000, // 1小時
-      });
+      res.cookie(
+        "authToken",
+        guestToken,
+        getCookieOptions({ maxAge: 60 * 60 * 1000 }) // 1小時
+      );
 
       return res.status(200).json({
         code: "SUCCESS",
@@ -326,12 +322,7 @@ const loginController = {
       }
     }
 
-    const isProd = process.env.NODE_ENV === "production";
-    res.clearCookie("authToken", {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "None" : "Lax",
-    });
+    res.clearCookie("authToken", getCookieOptions());
     return res.status(200).json({ code: "SUCCESS", message: "登出成功" });
   },
 };

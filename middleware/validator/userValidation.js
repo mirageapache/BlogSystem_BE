@@ -32,20 +32,19 @@ const validatePassword = [
  */
 const checkAccountExist = async (account) => {
   let newAccount = account;
-  let existingAccount;
-  try {
-    do {
-      existingAccount = await User.findOne({ account: newAccount });
-      if (existingAccount) {
-        newAccount = account;
-        newAccount += getRandomInt(11, 999);
-      }
-    } while (existingAccount);
+  const MAX_ATTEMPTS = 10;
 
-    return newAccount;
-  } catch (error) {
-    console.log(error);
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    const existingAccount = await User.findOne({ account: newAccount })
+      .select("_id")
+      .lean();
+    if (!existingAccount) return newAccount;
+    // 已存在則在原帳號後綴亂數重試
+    newAccount = `${account}${getRandomInt(11, 999)}`;
   }
+
+  // 重試多次仍碰撞，改用較大的亂數區間，盡可能避免重複（最終仍由 DB unique index 兜底）
+  return `${account}${getRandomInt(1000, 999999)}`;
 };
 
 /** account 驗證 */
@@ -58,7 +57,7 @@ const validateAccount = [
     .isLength({ max: 20 })
     .withMessage("帳號最多20個字")
     .matches(/^[a-zA-Z0-9_.]+$/)
-    .withMessage("Name can not contain symbols"),
+    .withMessage("帳號僅能使用英數字、底線(_)與句點(.)"),
 ];
 
 /** 檢查 account 是否已存在 */

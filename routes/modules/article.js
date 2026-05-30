@@ -47,7 +47,4 @@ router.patch(
   articleController.toggleLikeArticle
 );
 
-/** 收藏/取消收藏文章 */
-// router.patch('/toggleStoreAction/:id', authorization, articleController.toggleStorePost);
-
 module.exports = router;

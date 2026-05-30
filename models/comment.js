@@ -5,13 +5,13 @@ const Schema = mongoose.Schema;
 const CommentSchema = new Schema({
   /** 留言使用者 */
   author: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
   /** 回覆給 */
   replyTo: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "User",
   },
   /** 留言內容 */

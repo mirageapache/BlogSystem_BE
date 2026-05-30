@@ -32,7 +32,7 @@ const UserSchema = new Schema({
     type: String,
     default: "",
   },
-  /** 大頭照Id - pubilc_id of cloudinary */
+  /** 大頭照Id - public_id of cloudinary */
   avatarId: {
     type: String,
   },

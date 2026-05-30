@@ -6,7 +6,7 @@ const {
   cloudinaryRemove,
 } = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
-const { isValidId, escapeRegExp } = require("../middleware/commonUtils");
+const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 
 const postController = {
   /** (動態)取得貼文 */
@@ -29,7 +29,7 @@ const postController = {
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()
@@ -97,7 +97,7 @@ const postController = {
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()
@@ -136,15 +136,15 @@ const postController = {
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "comments",
-          select: "_id author replyto content createdAt",
+          select: "_id author replyTo content createdAt",
           populate: [
             // 用巢狀的方式再嵌套User的資料
-            { path: "author", select: "_id account name avatar bgColor" },
-            { path: "replyTo", select: "_id account name avatar bgColor" },
+            { path: "author", select: USER_PUBLIC_FIELDS },
+            { path: "replyTo", select: USER_PUBLIC_FIELDS },
           ],
         })
         .lean()
@@ -165,7 +165,7 @@ const postController = {
   /** 新增貼文 */
   createPost: async (req, res) => {
     const { content, status, hashTags } = req.body;
-    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const hashTagArr = parseHashTags(hashTags);
     let publicId = "";
     let imagePath = "";
 
@@ -187,7 +187,6 @@ const postController = {
       });
       return res.status(200).json(newPost);
     } catch (error) {
-      console.log(error);
       return res
         .status(500)
         .json({ code: "SYSTEM_ERR", message: error.message });
@@ -197,7 +196,7 @@ const postController = {
   /** 編輯(更新)貼文 */
   updatePost: async (req, res) => {
     const { postId, content, status, removeImage, hashTags } = req.body;
-    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const hashTagArr = parseHashTags(hashTags);
 
     try {
       if (!isValidId(postId))
@@ -232,7 +231,7 @@ const postController = {
         publicId = "";
       }
 
-      const upadtedPost = await Post.findByIdAndUpdate(
+      const updatedPost = await Post.findByIdAndUpdate(
         postId,
         {
           content,
@@ -247,7 +246,7 @@ const postController = {
         }
       ).lean();
 
-      return res.status(200).json(upadtedPost);
+      return res.status(200).json(updatedPost);
     } catch (error) {
       return res
         .status(500)
@@ -305,7 +304,7 @@ const postController = {
       })
       .populate({
         path: "likedByUsers",
-        select: "_id account name avatar bgColor",
+        select: USER_PUBLIC_FIELDS,
       });
 
       if (!updateResult)
@@ -346,7 +345,7 @@ const postController = {
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()

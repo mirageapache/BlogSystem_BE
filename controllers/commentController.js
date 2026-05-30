@@ -2,7 +2,7 @@ const moment = require("moment-timezone");
 const Comment = require("../models/comment");
 const Post = require("../models/post");
 const Article = require("../models/article");
-const { isValidId } = require("../middleware/commonUtils");
+const { isValidId, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 
 const commentController = {
   /** 取得貼文留言 */
@@ -14,11 +14,11 @@ const commentController = {
       const comments = await Post.findOne({ _id: id })
         .populate({
           path: "comments",
-          select: "_id author replyto content createdAt",
+          select: "_id author replyTo content createdAt",
           populate: [
             // 用巢狀的方式再嵌套User的資料
-            { path: "author", select: "_id account name avatar bgColor" },
-            { path: "replyTo", select: "_id account name avatar bgColor" },
+            { path: "author", select: USER_PUBLIC_FIELDS },
+            { path: "replyTo", select: USER_PUBLIC_FIELDS },
           ],
         })
         .lean()

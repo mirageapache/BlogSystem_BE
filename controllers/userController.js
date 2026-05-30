@@ -1,9 +1,6 @@
 const { isEmpty } = require("lodash");
-const mongoose = require("mongoose");
 const User = require("../models/user");
-const { escapeRegExp } = require("../middleware/commonUtils");
-
-const isValidId = (id) => mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === String(id);
+const { escapeRegExp, isValidId, getCookieOptions, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 const UserSetting = require("../models/userSetting");
 const {
   cloudinaryUpload,
@@ -45,7 +42,7 @@ const userController = {
       const users = await User.find(variable)
         .skip(skip)
         .limit(limit)
-        .select("_id account name avatar bgColor")
+        .select(USER_PUBLIC_FIELDS)
         .lean();
 
       const total = await User.countDocuments(variable);
@@ -291,6 +288,14 @@ const userController = {
           return res.status(401).json({ code: "ACCOUNT_EXISTED", message: "該帳號名稱已存在" });
       }
 
+      // 驗證 language（僅在前端有傳入時檢查）
+      const ALLOWED_LANGUAGES = ["zh", "en"];
+      if (language !== undefined && !ALLOWED_LANGUAGES.includes(language)) {
+        return res
+          .status(400)
+          .json({ code: "INVALID_PARAM", message: "language 參數不合法" });
+      }
+
       if (req.file && removeAvatar === "true") {
         return res
           .status(400)
@@ -333,14 +338,17 @@ const userController = {
       if (isEmpty(updateUser))
         return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者" });
 
-      // 更新User Setting
+      // 更新User Setting — 僅更新前端有傳入的欄位，避免未傳值被覆蓋
+      const settingUpdate = {};
+      if (language !== undefined) settingUpdate.language = language;
+      if (emailPrompt !== undefined)
+        settingUpdate.emailPrompt = emailPrompt === true || emailPrompt === "true";
+      if (mobilePrompt !== undefined)
+        settingUpdate.mobilePrompt = mobilePrompt === true || mobilePrompt === "true";
+
       const updateUserSetting = await UserSetting.findOneAndUpdate(
         { user: userId },
-        {
-          language,
-          emailPrompt: emailPrompt === "true",
-          mobilePrompt: mobilePrompt === "true",
-        },
+        settingUpdate,
         { new: true }
       ).lean();
 
@@ -438,12 +446,7 @@ const userController = {
       );
 
       // 清除 cookie
-      const isProd = process.env.NODE_ENV === "production";
-      res.clearCookie("authToken", {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: isProd ? "None" : "Lax",
-      });
+      res.clearCookie("authToken", getCookieOptions());
 
       return res.json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {

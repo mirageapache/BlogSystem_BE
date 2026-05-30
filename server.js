@@ -2,10 +2,26 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const multer = require("multer");
+const logger = require("./middleware/logger");
 const port = process.env.PORT || 3000;
+
+// 啟動時檢查必要環境變數，缺少則直接結束程序，避免執行期才爆出隱晦錯誤
+const REQUIRED_ENV = [
+  "MONGODB_URI",
+  "JWT_SECRET",
+  "SALT_ROUNDS",
+  "CLOUDINARY_NAME",
+  "CLOUDINARY_CLIENT_ID",
+  "CLOUDINARY_SECRET",
+];
+const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
+if (missingEnv.length > 0) {
+  logger.error(`缺少必要環境變數：${missingEnv.join(", ")}`);
+  process.exit(1);
+}
+
 const routes = require("./routes");
 
 const app = express();
@@ -13,19 +29,24 @@ const app = express();
 // 部署在 Vercel/反向代理之後，信任第一層 proxy 以正確取得 client IP（供 rate limit 使用）
 app.set("trust proxy", 1);
 
-app.use(
-  cors({
-    origin: [
+// 允許的來源：優先讀環境變數 CORS_ORIGINS（逗號分隔），未設定則用預設清單
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
+  : [
       "http://localhost:3001", // 本地開發的URL
       "http://172.31.4.24:3001", // 本地開發的URL
       "https://blog-system-fe.vercel.app", // 前端部署的URL
-    ], // 或者指定允許的源
+    ];
+
+app.use(
+  cors({
+    origin: corsOrigins,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
-app.use(bodyParser.json());
+app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
 // 資料庫連線設定
@@ -34,11 +55,11 @@ mongoose.connect(process.env.MONGODB_URI);
 const db = mongoose.connection;
 
 db.once("open", () => {
-  console.log("mongodb is connected!");
+  logger.info("mongodb is connected!");
 });
 
 db.on("error", (err) => {
-  console.log(err);
+  logger.error(err);
 });
 
 // 路由設定
@@ -62,7 +83,7 @@ app.use((err, req, res, next) => {
       .status(err.statusCode || 400)
       .json({ code: "VALIDATION_ERR", message: err.message });
   }
-  console.error(err);
+  logger.error(err);
   return res
     .status(500)
     .json({ code: "SYSTEM_ERR", message: "伺服器發生錯誤" });
@@ -70,5 +91,5 @@ app.use((err, req, res, next) => {
 
 // 伺服器監聽
 app.listen(port, () => {
-  console.log(`Express is running`);
+  logger.info(`Express is running`);
 });

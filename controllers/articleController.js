@@ -2,7 +2,7 @@ const moment = require("moment-timezone");
 const { isEmpty } = require("lodash");
 const Article = require("../models/article");
 const { convertDraftToTiptap, convertTiptapToDraft } = require('../middleware/articleUtils');
-const { isValidId, escapeRegExp } = require("../middleware/commonUtils");
+const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 
 const articleController = {
   /** (動態)取得文章 */
@@ -18,11 +18,11 @@ const articleController = {
         .limit(limit) // 限制返回的資料數
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()
@@ -82,11 +82,11 @@ const articleController = {
         .limit(limit) // 限制返回的資料數
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()
@@ -119,19 +119,19 @@ const articleController = {
       const article = await Article.findOne({ _id: articleId })
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "comments",
-          select: "_id author replyto content createdAt",
+          select: "_id author replyTo content createdAt",
           populate: [
             // 用巢狀的方式再嵌套User的資料
-            { path: "author", select: "_id account name avatar bgColor" },
-            { path: "replyTo", select: "_id account name avatar bgColor" },
+            { path: "author", select: USER_PUBLIC_FIELDS },
+            { path: "replyTo", select: USER_PUBLIC_FIELDS },
           ],
         })
         .lean();
@@ -157,7 +157,7 @@ const articleController = {
   /** 新增文章 */
   createArticle: async (req, res) => {
     const { title, content, subject = "", hashTags, clientType } = req.body;
-    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const hashTagArr = parseHashTags(hashTags);
 
     try {
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
@@ -191,7 +191,7 @@ const articleController = {
       hashTags,
       clientType
     } = req.body;
-    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const hashTagArr = parseHashTags(hashTags);
 
     try {
       if (!isValidId(articleId))
@@ -271,11 +271,11 @@ const articleController = {
       )
       .populate({
         path: "author",
-        select: "_id account name avatar bgColor",
+        select: USER_PUBLIC_FIELDS,
       })
       .populate({
         path: "likedByUsers",
-        select: "_id account name avatar bgColor",
+        select: USER_PUBLIC_FIELDS,
       });
 
       if (!updateResult)
