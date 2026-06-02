@@ -1,8 +1,6 @@
 const { isEmpty } = require("lodash");
-const mongoose = require("mongoose");
 const User = require("../models/user");
-
-const isValidId = (id) => mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === String(id);
+const { escapeRegExp, isValidId, getCookieOptions, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 const UserSetting = require("../models/userSetting");
 const {
   cloudinaryUpload,
@@ -14,19 +12,11 @@ const {
   accountExisting,
 } = require("../middleware/validator/userValidation");
 const Follow = require("../models/follow");
+const Article = require("../models/article");
+const Post = require("../models/post");
+const Comment = require("../models/comment");
 
 const userController = {
-  /** 取得所有使用者 */
-  getAllUserList: async (req, res) => {
-    try {
-      const users = await User.find().select("-password").lean();
-      return res.status(200).json(users);
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ code: "SYSTEM_ERR", message: error.message });
-    }
-  },
   /** 取得搜尋使用者清單(含追蹤資料) */
   getSearchUserList: async (req, res) => {
     const { searchString } = req.body;
@@ -37,11 +27,12 @@ const userController = {
     let variable = {};
 
     if (!isEmpty(searchString)) {
+      const safe = escapeRegExp(searchString);
       // $or 是mongoose的搜尋條件語法
       variable = {
         $or: [
-          { account: new RegExp(searchString, "i") },
-          { name: new RegExp(searchString, "i") },
+          { account: new RegExp(safe, "i") },
+          { name: new RegExp(safe, "i") },
         ],
       };
     }
@@ -51,7 +42,7 @@ const userController = {
       const users = await User.find(variable)
         .skip(skip)
         .limit(limit)
-        .select("_id account name avatar bgColor")
+        .select(USER_PUBLIC_FIELDS)
         .lean();
 
       const total = await User.countDocuments(variable);
@@ -277,7 +268,7 @@ const userController = {
       account,
       bio,
       avatar,
-      avatarId, // pulibic_id
+      avatarId, // public_id
       removeAvatar, // true 表示要移除avatar
       language,
       emailPrompt,
@@ -286,6 +277,31 @@ const userController = {
     let avatarPath = avatar; // 大頭照url
     let publicId = avatarId; // 大頭照id
     try {
+      if (email) {
+        const checkResult = await emailExisted(email, userId);
+        if (checkResult)
+          return res.status(401).json({ code: "EMAIL_EXISTED", message: "該Email已存在" });
+      }
+      if (account) {
+        const checkResult = await accountExisting(account, userId);
+        if (checkResult)
+          return res.status(401).json({ code: "ACCOUNT_EXISTED", message: "該帳號名稱已存在" });
+      }
+
+      // 驗證 language（僅在前端有傳入時檢查）
+      const ALLOWED_LANGUAGES = ["zh", "en"];
+      if (language !== undefined && !ALLOWED_LANGUAGES.includes(language)) {
+        return res
+          .status(400)
+          .json({ code: "INVALID_PARAM", message: "language 參數不合法" });
+      }
+
+      if (req.file && removeAvatar === "true") {
+        return res
+          .status(400)
+          .json({ code: "INVALID_PARAM", message: "不可同時上傳圖片與移除大頭照" });
+      }
+
       if (req.file) {
         if (isEmpty(publicId)) {
           const uploadResult = await cloudinaryUpload(req);
@@ -301,17 +317,6 @@ const userController = {
         await cloudinaryRemove(publicId);
         avatarPath = "";
         publicId = "";
-      }
-
-      if (email) {
-        const checkResult = await emailExisted(email, userId);
-        if (checkResult)
-          return res.status(401).json({ code: "EMAIL_EXISTED", message: "該Email已存在" });
-      }
-      if (account) {
-        const checkResult = await accountExisting(account, userId);
-        if (checkResult)
-          return res.status(401).json({ code: "ACCOUNT_EXISTED", message: "該帳號名稱已存在" });
       }
 
       // 更新User Info
@@ -333,14 +338,17 @@ const userController = {
       if (isEmpty(updateUser))
         return res.status(404).json({ code: "NOT_FOUND", message: "沒使用者" });
 
-      // 更新User Setting
+      // 更新User Setting — 僅更新前端有傳入的欄位，避免未傳值被覆蓋
+      const settingUpdate = {};
+      if (language !== undefined) settingUpdate.language = language;
+      if (emailPrompt !== undefined)
+        settingUpdate.emailPrompt = emailPrompt === true || emailPrompt === "true";
+      if (mobilePrompt !== undefined)
+        settingUpdate.mobilePrompt = mobilePrompt === true || mobilePrompt === "true";
+
       const updateUserSetting = await UserSetting.findOneAndUpdate(
         { user: userId },
-        {
-          language,
-          emailPrompt: emailPrompt === "true",
-          mobilePrompt: mobilePrompt === "true",
-        },
+        settingUpdate,
         { new: true }
       ).lean();
 
@@ -369,10 +377,77 @@ const userController = {
         .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
-  /** 個人-刪除使用者 */
+  /** 個人-刪除使用者
+   * 連動清理：UserSetting、Follow(雙向)、Article、Post、Comment、Cloudinary 圖片
+   */
   deleteUser: async (req, res) => {
+    const userId = req.user.userId;
     try {
-      await User.findByIdAndDelete(req.user.userId);
+      const user = await User.findById(userId).lean();
+      if (!user)
+        return res
+          .status(404)
+          .json({ code: "NOT_FOUND", message: "沒使用者" });
+
+      // 蒐集所有要從 Cloudinary 移除的 publicId
+      const cloudinaryIds = [];
+      if (user.avatarId) cloudinaryIds.push(user.avatarId);
+      const userPosts = await Post.find({ author: userId })
+        .select("imageId")
+        .lean();
+      userPosts.forEach((p) => {
+        if (p.imageId) cloudinaryIds.push(p.imageId);
+      });
+
+      // 蒐集要刪除的 comment ids（用於後續從 Post/Article.comments 移除引用）
+      const userComments = await Comment.find({ author: userId })
+        .select("_id")
+        .lean();
+      const commentIds = userComments.map((c) => c._id);
+
+      // 平行刪除各 collection 資料
+      await Promise.all([
+        UserSetting.deleteOne({ user: userId }),
+        Follow.deleteMany({
+          $or: [{ follower: userId }, { followed: userId }],
+        }),
+        Article.deleteMany({ author: userId }),
+        Post.deleteMany({ author: userId }),
+        Comment.deleteMany({ author: userId }),
+        // 把使用者留言從其他 post/article 的 comments 引用中移除
+        commentIds.length
+          ? Post.updateMany(
+              { comments: { $in: commentIds } },
+              { $pull: { comments: { $in: commentIds } } }
+            )
+          : Promise.resolve(),
+        commentIds.length
+          ? Article.updateMany(
+              { comments: { $in: commentIds } },
+              { $pull: { comments: { $in: commentIds } } }
+            )
+          : Promise.resolve(),
+        // 將使用者按讚紀錄從文章/貼文中移除
+        Article.updateMany(
+          { likedByUsers: userId },
+          { $pull: { likedByUsers: userId } }
+        ),
+        Post.updateMany(
+          { likedByUsers: userId },
+          { $pull: { likedByUsers: userId } }
+        ),
+      ]);
+
+      await User.findByIdAndDelete(userId);
+
+      // Cloudinary 圖片清理（best-effort，失敗不阻擋）
+      await Promise.allSettled(
+        cloudinaryIds.map((id) => cloudinaryRemove(id))
+      );
+
+      // 清除 cookie
+      res.clearCookie("authToken", getCookieOptions());
+
       return res.json({ code: "DELETE_SUCCESS", message: "刪除成功" });
     } catch (error) {
       return res

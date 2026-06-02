@@ -5,7 +5,7 @@ const Schema = mongoose.Schema;
 const UserSettingSchema = new Schema({
   /** 使用者id */
   user: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     select: false,
     ref: "User",
   },
@@ -25,7 +25,7 @@ const UserSettingSchema = new Schema({
   tags: {
     type: [String],
     select: false,
-    defaulte: [],
+    default: [],
   },
   /** email通知推播 */
   emailPrompt: {

@@ -4,9 +4,6 @@ const postController = require("../../controllers/postController");
 const { uploadMulter } = require("../../middleware/fileUtils");
 const { authorization, requireMember } = require("../../middleware/auth");
 
-/** 取得所有貼文 */
-router.get("/all", postController.getAllPostList);
-
 /** (動態)取得貼文 */
 router.post("/partial", postController.getPartialPostList);
 
@@ -48,14 +45,6 @@ router.patch(
   authorization,
   requireMember,
   postController.toggleLikePost
-);
-
-/** 收藏/取消收藏貼文 */
-router.patch(
-  "/toggleStoreAction",
-  authorization,
-  requireMember,
-  postController.toggleStorePost
 );
 
 /** 取得(搜尋)hashTag資料 */

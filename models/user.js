@@ -7,6 +7,8 @@ const UserSchema = new Schema({
   email: {
     type: String,
     required: true,
+    unique: true,
+    index: true,
   },
   /** 密碼 */
   password: {
@@ -17,6 +19,8 @@ const UserSchema = new Schema({
   account: {
     type: String,
     required: true,
+    unique: true,
+    index: true,
   },
   /** 名稱(暱稱) */
   name: {
@@ -28,7 +32,7 @@ const UserSchema = new Schema({
     type: String,
     default: "",
   },
-  /** 大頭照Id - pubilc_id of cloudinary */
+  /** 大頭照Id - public_id of cloudinary */
   avatarId: {
     type: String,
   },
@@ -51,6 +55,11 @@ const UserSchema = new Schema({
   },
   /** 帳號狀態 [0-未驗證 / 1-正常 / 2-黑名單 / 3-停用] */
   status: {
+    type: Number,
+    default: 0,
+  },
+  /** Token 版本：登出 / 重設密碼時遞增，使舊發出的 JWT 立即失效 */
+  tokenVersion: {
     type: Number,
     default: 0,
   },

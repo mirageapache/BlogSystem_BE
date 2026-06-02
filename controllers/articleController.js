@@ -1,34 +1,10 @@
 const moment = require("moment-timezone");
 const { isEmpty } = require("lodash");
-const { imgurFileHandler } = require("../middleware/fileUtils");
 const Article = require("../models/article");
 const { convertDraftToTiptap, convertTiptapToDraft } = require('../middleware/articleUtils');
+const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 
 const articleController = {
-  /** 取得所有文章 */
-  getAllArticle: async (req, res) => {
-    try {
-      const articles = await Article.find()
-        .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
-        .populate({
-          path: "author",
-          select: "_id account name avatar bgColor",
-        })
-        .populate({
-          path: "likedByUsers",
-          select: "_id account name avatar bgColor",
-        })
-        .populate("comments")
-        .lean()
-        .exec();
-
-      return res.status(200).json(articles);
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ code: "SYSTEM_ERR", message: error.message });
-    }
-  },
   /** (動態)取得文章 */
   getPartialArticle: async (req, res) => {
     try {
@@ -42,11 +18,11 @@ const articleController = {
         .limit(limit) // 限制返回的資料數
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()
@@ -79,19 +55,20 @@ const articleController = {
     const skip = (page - 1) * limit; // 計算需要跳過的資料數
     let variable = {};
 
+    const safe = escapeRegExp(searchString);
     if (!isEmpty(searchString) && !isEmpty(authorId)) {
       variable = {
         $or: [
-          { title: new RegExp(searchString, "i") },
-          { content: new RegExp(searchString, "i") },
+          { title: new RegExp(safe, "i") },
+          { content: new RegExp(safe, "i") },
           { author: authorId },
         ],
       };
     } else if (!isEmpty(searchString)) {
       variable = {
         $or: [
-          { title: new RegExp(searchString, "i") },
-          { content: new RegExp(searchString, "i") },
+          { title: new RegExp(safe, "i") },
+          { content: new RegExp(safe, "i") },
         ],
       };
     } else if (!isEmpty(authorId)) {
@@ -105,11 +82,11 @@ const articleController = {
         .limit(limit) // 限制返回的資料數
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()
@@ -135,23 +112,26 @@ const articleController = {
   getArticleDetail: async (req, res) => {
     const { articleId, clientType } = req.body;
 
+    if (!isValidId(articleId))
+      return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章資料" });
+
     try {
       const article = await Article.findOne({ _id: articleId })
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "comments",
-          select: "_id author replyto content createdAt",
+          select: "_id author replyTo content createdAt",
           populate: [
             // 用巢狀的方式再嵌套User的資料
-            { path: "author", select: "_id account name avatar bgColor" },
-            { path: "replyTo", select: "_id account name avatar bgColor" },
+            { path: "author", select: USER_PUBLIC_FIELDS },
+            { path: "replyTo", select: USER_PUBLIC_FIELDS },
           ],
         })
         .lean();
@@ -177,7 +157,7 @@ const articleController = {
   /** 新增文章 */
   createArticle: async (req, res) => {
     const { title, content, subject = "", hashTags, clientType } = req.body;
-    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const hashTagArr = parseHashTags(hashTags);
 
     try {
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
@@ -211,9 +191,12 @@ const articleController = {
       hashTags,
       clientType
     } = req.body;
-    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const hashTagArr = parseHashTags(hashTags);
 
     try {
+      if (!isValidId(articleId))
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
+
       const existing = await Article.findById(articleId).select("author").lean();
       if (!existing)
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
@@ -246,6 +229,9 @@ const articleController = {
   deleteArticle: async (req, res) => {
     try {
       const articleId = req.body.articleId;
+      if (!isValidId(articleId))
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
+
       const existing = await Article.findById(articleId).select("author").lean();
       if (!existing)
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
@@ -272,33 +258,28 @@ const articleController = {
     const userId = req.user.userId;
 
     try {
-      const articleData = await Article.findById(articleId);
-      if (!articleData)
+      if (!isValidId(articleId))
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
-      const likeList = articleData.likedByUsers;
-      let newLikeList = likeList.map((obj) => obj.toString());
 
-      if (action) {
-        if (!newLikeList.includes(userId)) newLikeList.push(userId);
-      } else {
-        const rmIndex = newLikeList.indexOf(userId);
-        if (rmIndex !== -1) newLikeList.splice(rmIndex, 1);
-      }
-
-      // 回寫至DB
+      // 以 atomic operator 更新，避免並發點讚造成遺失更新
       const updateResult = await Article.findByIdAndUpdate(
         articleId,
-        { likedByUsers: newLikeList },
+        action
+          ? { $addToSet: { likedByUsers: userId } }
+          : { $pull: { likedByUsers: userId } },
         { new: true }
       )
       .populate({
         path: "author",
-        select: "_id account name avatar bgColor",
+        select: USER_PUBLIC_FIELDS,
       })
       .populate({
         path: "likedByUsers",
-        select: "_id account name avatar bgColor",
+        select: USER_PUBLIC_FIELDS,
       });
+
+      if (!updateResult)
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
 
       return res
         .status(200)

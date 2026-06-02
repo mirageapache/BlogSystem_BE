@@ -18,8 +18,11 @@ const uploadMulter = multer({
     fileSize: 10485760, // 最大 10mb
   },
   fileFilter: function (req, file, cb) {
-    let ext = path.extname(file.originalname);
-    if (ext !== ".jpg" && ext !== ".jpeg" && ext !== ".png" && ext !== ".gif") {
+    const allowedExt = [".jpg", ".jpeg", ".png", ".gif"];
+    const allowedMime = ["image/jpeg", "image/png", "image/gif"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    // 同時檢查副檔名與 mimetype，避免偽造副檔名繞過
+    if (!allowedExt.includes(ext) || !allowedMime.includes(file.mimetype)) {
       const error = new Error(
         "圖片檔案格式不符，請上傳 jpg / jpeg / png / gif 檔案"
       );
@@ -78,11 +81,12 @@ const cloudinaryRemove = async (publicId) => {
         folder: folderPath,
       },
       (error, result) => {
-        if (result) {
-          resolve(result);
-        } else {
-          reject(error);
+        // 真正的錯誤才 reject；result.result 可能為 'ok' 或 'not found'，
+        // 兩者皆視為清理完成（best-effort，圖片本就不在也算成功）
+        if (error) {
+          return reject(error);
         }
+        resolve(result);
       }
     );
   });

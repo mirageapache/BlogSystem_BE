@@ -27,4 +27,6 @@ const FollowShipSchema = new Schema({
   },
 });
 
+FollowShipSchema.index({ follower: 1, followed: 1 }, { unique: true });
+
 module.exports = mongoose.model("Follow", FollowShipSchema);
