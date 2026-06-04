@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-if (process.env.NODE_ENV !== "production") require("dotenv").config();
+require("dotenv").config();
 const moment = require("moment-timezone");
 
 // --- Models ---
@@ -93,4 +93,14 @@ async function initDatabase() {
   }
 }
 
+// 安全護欄：此腳本會清空 user / follow / userSetting / article 資料，
+// 嚴禁在 production 執行，避免誤刪正式資料。
+if (process.env.NODE_ENV === "production") {
+  console.error("⛔ 拒絕在 production 環境執行資料庫重置腳本 (mockData)");
+  process.exit(1);
+}
+
+console.warn(
+  "⚠️  即將清空並重建 user / follow / userSetting / article 資料（destructive）..."
+);
 initDatabase();

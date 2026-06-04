@@ -6,24 +6,31 @@ const {
   validateEmail,
   validatePassword,
 } = require("../../middleware/validator/userValidation");
+const { authLimiter, mailLimiter } = require("../../middleware/rateLimiter");
 const authController = require("../../controllers/authController");
 
 /** 註冊 */
-router.post("/signup", [validateEmail, validatePassword], authController.signUp);
+router.post("/signup", authLimiter, [validateEmail, validatePassword], authController.signUp);
 
 /** 登入 */
-router.post("/signin", [validateEmail, validatePassword], authController.signIn);
+router.post("/signin", authLimiter, [validateEmail, validatePassword], authController.signIn);
 
 /** 找回密碼 */
-router.post("/findpwd", [validateEmail], authController.findPassword);
+router.post("/findpwd", mailLimiter, [validateEmail], authController.findPassword);
 
 /** 重設密碼 */
-router.post("/resetpwd", [validatePassword], authController.resetPassword);
+router.post("/resetpwd", authLimiter, [validatePassword], authController.resetPassword);
 
 /** 身分驗證 */
 router.post("/checkAuth", authorization, authController.checkAuth);
 
-/** 密碼加密 */
-router.post("/hashPwd", authController.passwordEncode);
+/** 取得目前使用者資料 */
+router.get("/me", authorization, authController.getCurrentUser);
+
+/** 訪客登入 */
+router.post("/guest", authController.guestLogin);
+
+/** 登出 */
+router.post("/signout", authController.signOut);
 
 module.exports = router;

@@ -10,7 +10,7 @@ const User = require("../models/user");
 const Follow = require("../models/follow");
 const UserSetting = require("../models/userSetting");
 // --- functions ---
-const { getRandomColor } = require("../middleware/commonUtils");
+const { getRandomColor, getCookieOptions } = require("../middleware/commonUtils");
 const {
   checkAccountExist,
   emailExisted,
@@ -78,6 +78,11 @@ const loginController = {
 
       return res.status(200).json({ code: "SUCCESS", message: "註冊成功" });
     } catch (error) {
+      if (error.code === 11000) {
+        return res
+          .status(401)
+          .json({ code: "EMAIL_EXISTED", message: "Email已被註冊" });
+      }
       return res
         .status(500)
         .json({ code: "SYSTEM_ERR", message: error.message });
@@ -108,16 +113,24 @@ const loginController = {
       }
 
       const userSetting = await UserSetting.findOne({ user: user._id }).lean();
-      // 產生並回傳 JWT token
-      const authToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d", // 設定token有效時間
-      });
+      const { _id: _sid, user: _suser, __v: _sv, ...userSettingData } = userSetting ?? {};
+      // 產生 JWT token 並寫入 httpOnly cookie（帶入 tokenVersion 供失效機制比對）
+      const authToken = jwt.sign(
+        { userId: user._id, tokenVersion: user.tokenVersion ?? 0 },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+      res.cookie(
+        "authToken",
+        authToken,
+        getCookieOptions({ maxAge: 7 * 24 * 60 * 60 * 1000 }) // 7天
+      );
 
       return res.status(200).json({
         code: "SUCCESS",
         message: "登入成功",
-        authToken,
         userData: {
+          _id: user._id,
           userId: user._id,
           email: user.email,
           account: user.account,
@@ -129,7 +142,7 @@ const loginController = {
           bgColor: user.bgColor,
           bio: user.bio,
           createdAt: user.createdAt,
-          ...userSetting,
+          ...userSettingData,
         },
       });
     } catch (error) {
@@ -151,38 +164,28 @@ const loginController = {
         expiresIn: "30m",
       });
       const resetPasswordLink = `${process.env.FRONTEND_URL}/reset_password/${urlToken}`;
-      const mailOne = process.env.MAIL_ONE;
 
-      // Mailgun 郵件內容
-      mg.messages
-        .create(process.env.MAILGUN_DOMAIN, {
-          from: `ReactBlog <noreply@${process.env.MAILGUN_DOMAIN}>`,
-          to: mailOne, // user.email, 為了demo方便，暫時都寄到mailOne處理
-          subject: "ReactBlog - 重設您的密碼",
-          html: `
+      await mg.messages.create(process.env.MAILGUN_DOMAIN, {
+        from: `ReactBlog <noreply@${process.env.MAILGUN_DOMAIN}>`,
+        to: user.email,
+        subject: "ReactBlog - 重設您的密碼",
+        html: `
             <p>你已提出重設密碼的需求，請點擊下方連結來重設密碼</p>
-            <p>提醒你，連結僅10分鐘有效！</p>
+            <p>提醒你，連結僅30分鐘有效！</p>
             <a href="${resetPasswordLink}">${resetPasswordLink}</a>
             <br>
             <br>
             <hr>
             <p>-若你未提出重設密碼要求，請忽略本信件-</p>
           `,
-          // 啟用追蹤功能（選用）
-          "o:tracking": "yes",
-          "o:tracking-clicks": "yes",
-          "o:tracking-opens": "yes",
-        })
-        .then((msg) => {
-          return res
-            .status(200)
-            .json({ code: "SUCCESS", message: "已發送重置密碼Email" });
-        })
-        .catch((err) => {
-          return res
-            .status(500)
-            .json({ code: "SEND_EMAIL_ERR", message: err.message });
-        });
+        "o:tracking": "yes",
+        "o:tracking-clicks": "yes",
+        "o:tracking-opens": "yes",
+      });
+
+      return res
+        .status(200)
+        .json({ code: "SUCCESS", message: "已發送重置密碼Email" });
     } catch (error) {
       return res
         .status(500)
@@ -211,10 +214,13 @@ const loginController = {
           .json({ code: "PWD_UNMATCH", message: "新密碼與確認密碼不相符" });
       }
 
-      // 更新用戶密碼
+      // 更新用戶密碼，並遞增 tokenVersion 使所有舊 token 失效
       const salt = Number.parseInt(process.env.SALT_ROUNDS);
       const hashedPwd = bcrypt.hashSync(password, salt);
-      await User.findByIdAndUpdate(user.id, { password: hashedPwd });
+      await User.findByIdAndUpdate(user.id, {
+        password: hashedPwd,
+        $inc: { tokenVersion: 1 },
+      });
 
       return res.status(200).json({ code: "SUCCESS", message: "密碼重設成功" });
     } catch (error) {
@@ -224,11 +230,11 @@ const loginController = {
     }
   },
   /** 身分驗證
-   * 使用userId及authToken進行驗證
+   * 僅以 authToken (JWT) 為驗證來源，不採信 body 傳入的 id
    */
   checkAuth: async (req, res) => {
     try {
-      const user = await User.findById(req.body.id).lean();
+      const user = await User.findById(req.user.userId).lean();
       if (!user) {
         return res.status(401).json({ code: "TOKEN_ERR", message: "驗證錯誤" });
       }
@@ -239,11 +245,85 @@ const loginController = {
         .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
-  /** 密碼加密(測試用) */
-  passwordEncode: async (req, res) => {
-    const password = req.body.password;
-    const hashedPwd = bcrypt.hashSync(password, process.env.SALT_ROUNDS);
-    return res.status(200).json({ code: "SUCCESS", hashedPwd });
+  /** 取得目前登入使用者資料 */
+  getCurrentUser: async (req, res) => {
+    try {
+      const { userId } = req.user;
+      const user = await User.findById(userId).lean();
+      if (!user)
+        return res.status(404).json({ code: "USER_NOT_FOUND", message: "使用者不存在" });
+
+      const userSetting = await UserSetting.findOne({ user: userId }).lean();
+      const { _id: _sid, user: _suser, __v: _sv, ...userSettingData } = userSetting ?? {};
+      return res.status(200).json({
+        code: "SUCCESS",
+        userData: {
+          _id: user._id,
+          userId: user._id,
+          email: user.email,
+          account: user.account,
+          name: user.name,
+          avatar: user.avatar,
+          avatarId: user.avatarId,
+          role: user.userRole,
+          status: user.status,
+          bgColor: user.bgColor,
+          bio: user.bio,
+          createdAt: user.createdAt,
+          ...userSettingData,
+        },
+      });
+    } catch (error) {
+      return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
+    }
+  },
+  /** 訪客登入 */
+  guestLogin: async (req, res) => {
+    try {
+      // 不需要帳密，直接簽發一個受限 token
+      const guestToken = jwt.sign(
+        { role: 'guest', userId: 'guest' },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+      res.cookie(
+        "authToken",
+        guestToken,
+        getCookieOptions({ maxAge: 60 * 60 * 1000 }) // 1小時
+      );
+
+      return res.status(200).json({
+        code: "SUCCESS",
+        userData: {
+          userId: 'guest',
+          name: '訪客',
+          email: 'guest@blogsystem.com',
+          role: 'guest',
+        }
+      });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
+    }
+  },
+  /** 登出 */
+  signOut: async (req, res) => {
+    // 嘗試從 cookie 解析出使用者並遞增 tokenVersion，使該 token 立即失效（訪客略過）
+    const token = req.cookies?.authToken;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded?.userId && decoded.userId !== "guest" && decoded.role !== "guest") {
+          await User.findByIdAndUpdate(decoded.userId, { $inc: { tokenVersion: 1 } });
+        }
+      } catch (e) {
+        // token 無效或過期，無須遞增，直接清除 cookie 即可
+      }
+    }
+
+    res.clearCookie("authToken", getCookieOptions());
+    return res.status(200).json({ code: "SUCCESS", message: "登出成功" });
   },
 };
 

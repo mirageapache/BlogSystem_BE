@@ -1,34 +1,10 @@
 const moment = require("moment-timezone");
 const { isEmpty } = require("lodash");
-const { imgurFileHandler } = require("../middleware/fileUtils");
 const Article = require("../models/article");
 const { convertDraftToTiptap, convertTiptapToDraft } = require('../middleware/articleUtils');
+const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 
 const articleController = {
-  /** 取得所有文章 */
-  getAllArticle: async (req, res) => {
-    try {
-      const articles = await Article.find()
-        .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
-        .populate({
-          path: "author",
-          select: "_id account name avatar bgColor",
-        })
-        .populate({
-          path: "likedByUsers",
-          select: "_id account name avatar bgColor",
-        })
-        .populate("comments")
-        .lean()
-        .exec();
-
-      return res.status(200).json(articles);
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ code: "SYSTEM_ERR", message: error.message });
-    }
-  },
   /** (動態)取得文章 */
   getPartialArticle: async (req, res) => {
     try {
@@ -42,11 +18,11 @@ const articleController = {
         .limit(limit) // 限制返回的資料數
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()
@@ -57,12 +33,9 @@ const articleController = {
       const totalArticle = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalArticle ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0)
-        return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
-
       return res.status(200).json({
         articles,
-        nextPage: nextPage,
+        nextPage: total === 0 ? -1 : nextPage,
         totalArticle: total,
       });
     } catch (error) {
@@ -82,19 +55,20 @@ const articleController = {
     const skip = (page - 1) * limit; // 計算需要跳過的資料數
     let variable = {};
 
+    const safe = escapeRegExp(searchString);
     if (!isEmpty(searchString) && !isEmpty(authorId)) {
       variable = {
         $or: [
-          { title: new RegExp(searchString, "i") },
-          { content: new RegExp(searchString, "i") },
+          { title: new RegExp(safe, "i") },
+          { content: new RegExp(safe, "i") },
           { author: authorId },
         ],
       };
     } else if (!isEmpty(searchString)) {
       variable = {
         $or: [
-          { title: new RegExp(searchString, "i") },
-          { content: new RegExp(searchString, "i") },
+          { title: new RegExp(safe, "i") },
+          { content: new RegExp(safe, "i") },
         ],
       };
     } else if (!isEmpty(authorId)) {
@@ -108,11 +82,11 @@ const articleController = {
         .limit(limit) // 限制返回的資料數
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate("comments")
         .lean()
@@ -123,12 +97,9 @@ const articleController = {
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
-      if (total === 0)
-        return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章" });
-
       return res.status(200).json({
         articles,
-        nextPage,
+        nextPage: total === 0 ? -1 : nextPage,
         totalArticle: total,
       });
     } catch (error) {
@@ -141,23 +112,26 @@ const articleController = {
   getArticleDetail: async (req, res) => {
     const { articleId, clientType } = req.body;
 
+    if (!isValidId(articleId))
+      return res.status(404).json({ code: "NOT_FOUND", message: "沒有文章資料" });
+
     try {
       const article = await Article.findOne({ _id: articleId })
         .populate({
           path: "author",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "likedByUsers",
-          select: "_id account name avatar bgColor",
+          select: USER_PUBLIC_FIELDS,
         })
         .populate({
           path: "comments",
-          select: "_id author replyto content createdAt",
+          select: "_id author replyTo content createdAt",
           populate: [
             // 用巢狀的方式再嵌套User的資料
-            { path: "author", select: "_id account name avatar bgColor" },
-            { path: "replyTo", select: "_id account name avatar bgColor" },
+            { path: "author", select: USER_PUBLIC_FIELDS },
+            { path: "replyTo", select: USER_PUBLIC_FIELDS },
           ],
         })
         .lean();
@@ -182,15 +156,14 @@ const articleController = {
   },
   /** 新增文章 */
   createArticle: async (req, res) => {
-    const { userId, title, content, subject = "", hashTags, clientType } = req.body;
-    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
+    const { title, content, subject = "", hashTags, clientType } = req.body;
+    const hashTagArr = parseHashTags(hashTags);
 
     try {
-      // Vue 專案發送的請求，需要將 Tiptap 格式轉換為 Draft.js 格式
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
 
       const newArticle = await Article.create({
-        author: userId,
+        author: req.user.userId,
         title,
         content: articleContent,
         status: 0,
@@ -212,34 +185,29 @@ const articleController = {
   updateArticle: async (req, res) => {
     const {
       articleId,
-      userId,
       title,
       content,
       subject = "",
       hashTags,
       clientType
     } = req.body;
-    const hashTagArr = !isEmpty(hashTags) ? JSON.parse(hashTags) : [];
-    if (req.file) {
-      await cloudinaryUpload(req) // upload avatar to cloudinary
-        .then((image) => {
-          avatarPath = image.secure_url;
-        })
-        .catch((error) => {
-          return res
-            .status(500)
-            .json({ code: "UPLOAD_IMG_ERR", message: error.message });
-        });
-    }
+    const hashTagArr = parseHashTags(hashTags);
 
     try {
-      // Vue 專案發送的請求，需要將 Tiptap 格式轉換為 Draft.js 格式
+      if (!isValidId(articleId))
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
+
+      const existing = await Article.findById(articleId).select("author").lean();
+      if (!existing)
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
+      if (existing.author.toString() !== req.user.userId)
+        return res.status(403).json({ code: "FORBIDDEN", message: "無權限編輯此文章" });
+
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
 
       const updatedArticle = await Article.findByIdAndUpdate(
         articleId,
         {
-          author: userId,
           title,
           content: articleContent,
           status: 0,
@@ -260,7 +228,17 @@ const articleController = {
   /** 刪除文章 */
   deleteArticle: async (req, res) => {
     try {
-      await Article.findByIdAndDelete(req.body.articleId);
+      const articleId = req.body.articleId;
+      if (!isValidId(articleId))
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
+
+      const existing = await Article.findById(articleId).select("author").lean();
+      if (!existing)
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
+      if (existing.author.toString() !== req.user.userId)
+        return res.status(403).json({ code: "FORBIDDEN", message: "無權限刪除此文章" });
+
+      await Article.findByIdAndDelete(articleId);
       return res.status(200).json({
         code: "DELETE_SUCCESS",
         message: "文章刪除成功",
@@ -273,40 +251,35 @@ const articleController = {
   },
   /** 喜歡/取消喜歡 文章
    * @param articleId 文章Id
-   * @param userId 使用者Id
    * @param action true / false
    */
   toggleLikeArticle: async (req, res) => {
-    const { articleId, userId, action } = req.body;
+    const { articleId, action } = req.body;
+    const userId = req.user.userId;
 
     try {
-      const articleData = await Article.findById(articleId);
-      const likeList = articleData.likedByUsers;
-      let newLikeList = likeList.map((obj) => obj.toString());
+      if (!isValidId(articleId))
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
 
-      if (action) {
-        // like action
-        if (!newLikeList.includes(userId)) newLikeList.push(userId);
-      } else {
-        // unlike action
-        const rmIndex = newLikeList.indexOf(userId);
-        if (rmIndex !== -1) newLikeList.splice(rmIndex, 1);
-      }
-
-      // 回寫至DB
+      // 以 atomic operator 更新，避免並發點讚造成遺失更新
       const updateResult = await Article.findByIdAndUpdate(
         articleId,
-        { likedByUsers: newLikeList },
+        action
+          ? { $addToSet: { likedByUsers: userId } }
+          : { $pull: { likedByUsers: userId } },
         { new: true }
       )
       .populate({
         path: "author",
-        select: "_id account name avatar bgColor",
+        select: USER_PUBLIC_FIELDS,
       })
       .populate({
         path: "likedByUsers",
-        select: "_id account name avatar bgColor",
+        select: USER_PUBLIC_FIELDS,
       });
+
+      if (!updateResult)
+        return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
 
       return res
         .status(200)
