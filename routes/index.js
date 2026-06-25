@@ -8,6 +8,7 @@ const auth = require("./modules/auth");
 const post = require("./modules/post");
 const user = require("./modules/user");
 const utility = require("./modules/utility");
+const ai = require("./modules/ai");
 
 router.use("/api/article", article);
 router.use("/api/comment", comment);
@@ -16,5 +17,6 @@ router.use("/api/auth", auth);
 router.use("/api/post", post);
 router.use("/api/user", user);
 router.use("/api/utility", utility);
+router.use("/api/ai", ai);
 
 module.exports = router;
