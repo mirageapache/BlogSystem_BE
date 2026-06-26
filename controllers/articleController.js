@@ -4,6 +4,9 @@ const Article = require("../models/article");
 const { convertDraftToTiptap, convertTiptapToDraft } = require('../middleware/articleUtils');
 const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 
+/** 公開可見的文章狀態：1-發佈(公開) / 2-發佈(限閱)。草稿(0)與下架(3)僅作者本人可見 */
+const PUBLIC_STATUS = [1, 2];
+
 const articleController = {
   /** (動態)取得文章 */
   getPartialArticle: async (req, res) => {
@@ -12,7 +15,9 @@ const articleController = {
       const limit = parseInt(req.body.limit) || 20; // 每頁顯示的數量，預設為20
       const skip = (page - 1) * limit; // 計算需要跳過的貼文資料數
 
-      const articles = await Article.find()
+      const publicFilter = { status: { $in: PUBLIC_STATUS } }; // 僅公開文章，排除草稿/下架
+
+      const articles = await Article.find(publicFilter)
         .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
         .skip(skip) // 跳過前面的資料
         .limit(limit) // 限制返回的資料數
@@ -29,7 +34,7 @@ const articleController = {
         .exec();
 
       // 文章總筆數，用於計算總頁數
-      const total = await Article.countDocuments();
+      const total = await Article.countDocuments(publicFilter);
       const totalArticle = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalArticle ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
@@ -74,6 +79,7 @@ const articleController = {
     } else if (!isEmpty(authorId)) {
       variable = { author: authorId };
     }
+    variable.status = { $in: PUBLIC_STATUS }; // 公開搜尋僅回傳公開文章，作者草稿請走 /myList
 
     try {
       const articles = await Article.find(variable)
@@ -142,6 +148,15 @@ const articleController = {
           .json({ code: "NOT_FOUND", message: "沒有文章資料" });
       }
 
+      // 非公開文章(草稿/下架)僅作者本人可讀；req.user 由 optionalAuth 提供
+      const isOwner =
+        req.user && article.author?._id?.toString() === req.user.userId;
+      if (!PUBLIC_STATUS.includes(article.status) && !isOwner) {
+        return res
+          .status(404)
+          .json({ code: "NOT_FOUND", message: "沒有文章資料" });
+      }
+
       // 根據前端專案轉換文章內容格式
       if (clientType === 'vue') {
         // 如果是 Vue 專案，將內容轉換為 Tiptap 格式，React 專案則保留 Draft.js 格式
@@ -154,10 +169,49 @@ const articleController = {
         .json({ code: "SYSTEM_ERR", message: error.message });
     }
   },
+  /** 取得「我的文章」清單（含草稿/下架等所有狀態，僅作者本人）
+   * @param status 選填，指定只回傳特定狀態（例如只看草稿 0）
+   */
+  getMyArticles: async (req, res) => {
+    const page = parseInt(req.body.page) || 1;
+    const limit = parseInt(req.body.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const filter = { author: req.user.userId };
+    const parsedStatus = parseInt(req.body.status);
+    if ([0, 1, 2, 3].includes(parsedStatus)) filter.status = parsedStatus;
+
+    try {
+      const articles = await Article.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: "author", select: USER_PUBLIC_FIELDS })
+        .lean()
+        .exec();
+
+      const total = await Article.countDocuments(filter);
+      const totalPages = Math.ceil(total / limit);
+      const nextPage = page + 1 > totalPages ? -1 : page + 1;
+
+      return res.status(200).json({
+        articles,
+        nextPage: total === 0 ? -1 : nextPage,
+        totalArticle: total,
+      });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
+    }
+  },
   /** 新增文章 */
   createArticle: async (req, res) => {
-    const { title, content, subject = "", hashTags, clientType } = req.body;
+    const { title, content, status, hashTags, clientType } = req.body;
     const hashTagArr = parseHashTags(hashTags);
+    // 狀態白名單驗證；未提供或非法值時預設為 0(草稿)
+    const parsedStatus = parseInt(status);
+    const articleStatus = [0, 1, 2, 3].includes(parsedStatus) ? parsedStatus : 0;
 
     try {
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
@@ -166,8 +220,7 @@ const articleController = {
         author: req.user.userId,
         title,
         content: articleContent,
-        status: 0,
-        subject,
+        status: articleStatus,
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
         likedByUsers: [],
@@ -187,11 +240,14 @@ const articleController = {
       articleId,
       title,
       content,
-      subject = "",
+      status,
       hashTags,
       clientType
     } = req.body;
     const hashTagArr = parseHashTags(hashTags);
+    // 僅在前端有傳入合法狀態時才更新，避免編輯既有文章時誤將狀態重設為草稿
+    const parsedStatus = parseInt(status);
+    const articleStatus = [0, 1, 2, 3].includes(parsedStatus) ? parsedStatus : null;
 
     try {
       if (!isValidId(articleId))
@@ -205,16 +261,17 @@ const articleController = {
 
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
 
+      const updateData = {
+        title,
+        content: articleContent,
+        hashTags: hashTagArr,
+        editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
+      };
+      if (articleStatus !== null) updateData.status = articleStatus;
+
       const updatedArticle = await Article.findByIdAndUpdate(
         articleId,
-        {
-          title,
-          content: articleContent,
-          status: 0,
-          subject,
-          hashTags: hashTagArr,
-          editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
-        },
+        updateData,
         { new: true }
       ).lean();
       return res.status(200).json(updatedArticle);
