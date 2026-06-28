@@ -91,5 +91,5 @@ app.use((err, req, res, next) => {
 
 // 伺服器監聽
 app.listen(port, () => {
-  logger.info(`Express is running`);
+  logger.info(`Express is running on port ${port}`);
 });

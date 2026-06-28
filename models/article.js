@@ -31,10 +31,6 @@ const ArticleSchema = new Schema({
     type: Number,
     default: 0,
   },
-  /** 主題類型 */
-  subjects: {
-    type: String,
-  },
   /** 分類標籤 */
   hashTags: {
     type: [String],

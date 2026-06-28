@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const postController = require("../../controllers/postController");
 const { uploadMulter } = require("../../middleware/fileUtils");
-const { authorization, requireMember } = require("../../middleware/auth");
+const { authorization, requireMember, optionalAuth } = require("../../middleware/auth");
 
 /** (動態)取得貼文 */
 router.post("/partial", postController.getPartialPostList);
@@ -10,8 +10,11 @@ router.post("/partial", postController.getPartialPostList);
 /** 取得搜尋貼文 */
 router.post("/search", postController.getSearchPostList);
 
-/** 取得貼文詳細資料 */
-router.post("/detail", postController.getPostDetail);
+/** 取得「我的貼文」清單（含草稿/下架，僅作者本人） */
+router.post("/myList", authorization, requireMember, postController.getMyPosts);
+
+/** 取得貼文詳細資料（optionalAuth：草稿/下架僅作者本人可讀） */
+router.post("/detail", optionalAuth, postController.getPostDetail);
 
 /** 新增貼文 */
 router.post(
