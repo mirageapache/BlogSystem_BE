@@ -8,6 +8,9 @@ const {
 const { isEmpty } = require("lodash");
 const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 
+/** 公開可見的貼文狀態：1-發佈(公開) / 2-發佈(限閱)。草稿(0)與下架(3)僅作者本人可見 */
+const PUBLIC_STATUS = [1, 2];
+
 const postController = {
   /** (動態)取得貼文 */
   getPartialPostList: async (req, res) => {
@@ -16,7 +19,9 @@ const postController = {
       const limit = parseInt(req.body.limit) || 20; // 每頁顯示的數量，預設為20
       const skip = (page - 1) * limit; // 計算需要跳過的貼文資料數
 
-      const posts = await Post.find()
+      const publicFilter = { status: { $in: PUBLIC_STATUS } }; // 僅公開貼文，排除草稿/下架
+
+      const posts = await Post.find(publicFilter)
         .sort({ createdAt: -1 }) // 依 createdAt 做遞減排序
         .skip(skip) // 跳過前面的資料
         .limit(limit) // 限制返回的資料數
@@ -36,7 +41,7 @@ const postController = {
         .exec();
 
       // 貼文總筆數，用於計算頁數
-      const total = await Post.countDocuments();
+      const total = await Post.countDocuments(publicFilter);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 
@@ -82,6 +87,7 @@ const postController = {
     } else if (!isEmpty(authorId)) {
       variable = { author: authorId };
     }
+    variable.status = { $in: PUBLIC_STATUS }; // 公開搜尋僅回傳公開貼文，作者草稿請走 /myList
 
     try {
       const posts = await Post.find(variable)
@@ -154,7 +160,59 @@ const postController = {
           .status(404)
           .json({ code: "NOT_FOUND", message: "沒有貼文資料" });
 
+      // 非公開貼文(草稿/下架)僅作者本人可讀；req.user 由 optionalAuth 提供
+      const isOwner =
+        req.user && post.author?._id?.toString() === req.user.userId;
+      if (!PUBLIC_STATUS.includes(post.status) && !isOwner) {
+        return res
+          .status(404)
+          .json({ code: "NOT_FOUND", message: "沒有貼文資料" });
+      }
+
       return res.status(200).json(post);
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ code: "SYSTEM_ERR", message: error.message });
+    }
+  },
+
+  /** 取得「我的貼文」清單（含草稿/下架等所有狀態，僅作者本人）
+   * @param status 選填，指定只回傳特定狀態（例如只看草稿 0）
+   */
+  getMyPosts: async (req, res) => {
+    const page = parseInt(req.body.page) || 1;
+    const limit = parseInt(req.body.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const filter = { author: req.user.userId };
+    const parsedStatus = parseInt(req.body.status);
+    if ([0, 1, 2, 3].includes(parsedStatus)) filter.status = parsedStatus;
+
+    try {
+      const posts = await Post.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("author", {
+          _id: 1,
+          account: 1,
+          name: 1,
+          avatar: 1,
+          bgColor: 1,
+        })
+        .lean()
+        .exec();
+
+      const total = await Post.countDocuments(filter);
+      const totalPages = Math.ceil(total / limit);
+      const nextPage = page + 1 > totalPages ? -1 : page + 1;
+
+      return res.status(200).json({
+        posts,
+        nextPage: total === 0 ? -1 : nextPage,
+        totalPosts: total,
+      });
     } catch (error) {
       return res
         .status(500)
@@ -166,6 +224,9 @@ const postController = {
   createPost: async (req, res) => {
     const { content, status, hashTags } = req.body;
     const hashTagArr = parseHashTags(hashTags);
+    // 狀態白名單驗證；未提供或非法值時預設為 0(草稿)
+    const parsedStatus = parseInt(status);
+    const postStatus = [0, 1, 2, 3].includes(parsedStatus) ? parsedStatus : 0;
     let publicId = "";
     let imagePath = "";
 
@@ -181,7 +242,7 @@ const postController = {
         content,
         image: imagePath,
         imageId: publicId,
-        status: parseInt(status),
+        status: postStatus,
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
       });
@@ -197,13 +258,16 @@ const postController = {
   updatePost: async (req, res) => {
     const { postId, content, status, removeImage, hashTags } = req.body;
     const hashTagArr = parseHashTags(hashTags);
+    // 僅在前端有傳入合法狀態時才更新，避免編輯既有貼文時誤將狀態重設為草稿
+    const parsedStatus = parseInt(status);
+    const postStatus = [0, 1, 2, 3].includes(parsedStatus) ? parsedStatus : null;
 
     try {
       if (!isValidId(postId))
         return res.status(404).json({ code: "NOT_FOUND", message: "貼文不存在" });
 
       const existing = await Post.findById(postId)
-        .select("author image imageId")
+        .select("author image imageId content")
         .lean();
       if (!existing)
         return res.status(404).json({ code: "NOT_FOUND", message: "貼文不存在" });
@@ -231,20 +295,20 @@ const postController = {
         publicId = "";
       }
 
-      const updatedPost = await Post.findByIdAndUpdate(
-        postId,
-        {
-          content,
-          image: imagePath,
-          imageId: publicId,
-          status: parseInt(status),
-          hashTags: hashTagArr,
-          editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
-        },
-        {
-          new: true,
-        }
-      ).lean();
+      const updateData = {
+        content,
+        image: imagePath,
+        imageId: publicId,
+        hashTags: hashTagArr,
+      };
+      if (postStatus !== null) updateData.status = postStatus;
+      // 僅在內容真的變動時才更新 editedAt；純調整狀態(發佈/下架)不算重新編輯
+      if (content !== undefined && content !== existing.content)
+        updateData.editedAt = moment.tz(new Date(), "Asia/Taipei").toDate();
+
+      const updatedPost = await Post.findByIdAndUpdate(postId, updateData, {
+        new: true,
+      }).lean();
 
       return res.status(200).json(updatedPost);
     } catch (error) {
@@ -331,8 +395,12 @@ const postController = {
       return res.status(200).json({ posts: [], code: "NO_SEARCH_STRING" });
 
     const safe = escapeRegExp(searchString);
+    const hashTagFilter = {
+      hashTags: new RegExp(safe, "i"),
+      status: { $in: PUBLIC_STATUS },
+    }; // 公開 hashTag 搜尋僅回傳公開貼文
     try {
-      const posts = await Post.find({ hashTags: new RegExp(safe, "i") })
+      const posts = await Post.find(hashTagFilter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -355,9 +423,7 @@ const postController = {
         return res.status(404).json({ code: "NOT_FOUND", message: "沒有貼文" });
 
       // 取得搜尋資料總數，用於計算總數
-      const total = await Post.countDocuments({
-        hashTags: new RegExp(safe, "i"),
-      });
+      const total = await Post.countDocuments(hashTagFilter);
       const totalPages = Math.ceil(total / limit); // 總頁數
       const nextPage = page + 1 > totalPages ? -1 : page + 1; // 下一頁指標，如果是最後一頁則回傳-1
 

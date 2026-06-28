@@ -253,7 +253,7 @@ const articleController = {
       if (!isValidId(articleId))
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
 
-      const existing = await Article.findById(articleId).select("author").lean();
+      const existing = await Article.findById(articleId).select("author content").lean();
       if (!existing)
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
       if (existing.author.toString() !== req.user.userId)
@@ -265,9 +265,11 @@ const articleController = {
         title,
         content: articleContent,
         hashTags: hashTagArr,
-        editedAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
       };
       if (articleStatus !== null) updateData.status = articleStatus;
+      // 僅在內容真的變動時才更新 editedAt；純調整狀態(發佈/下架)不算重新編輯
+      if (content !== undefined && articleContent !== existing.content)
+        updateData.editedAt = moment.tz(new Date(), "Asia/Taipei").toDate();
 
       const updatedArticle = await Article.findByIdAndUpdate(
         articleId,
