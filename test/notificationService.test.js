@@ -70,3 +70,28 @@ test("createSystemNotification rejects an unsafe link before writing", async () 
     /INVALID_LINK/
   );
 });
+
+test("clampLimit defaults to 15 and clamps to 1..50", () => {
+  assert.equal(service.clampLimit(undefined), 15, "missing → default 15");
+  assert.equal(service.clampLimit(0), 15, "0 is falsy → default 15");
+  assert.equal(service.clampLimit("abc"), 15, "non-numeric → default 15");
+  assert.equal(service.clampLimit(-5), 1, "negative clamps up to 1");
+  assert.equal(service.clampLimit(100), 50, "huge clamps down to 50");
+  assert.equal(service.clampLimit("20"), 20, "numeric string passes through");
+  assert.equal(service.clampLimit(30), 30);
+});
+
+test("clampPage defaults to 1 and never goes below 1", () => {
+  assert.equal(service.clampPage(undefined), 1);
+  assert.equal(service.clampPage(0), 1);
+  assert.equal(service.clampPage(-3), 1);
+  assert.equal(service.clampPage("4"), 4);
+  assert.equal(service.clampPage(5), 5);
+});
+
+test("nextPageFor returns next page only when more rows remain", () => {
+  assert.equal(service.nextPageFor(1, 15, 20), 2, "page 1 of 20 → has page 2");
+  assert.equal(service.nextPageFor(2, 15, 20), 0, "page 2 covers all 20 → no next");
+  assert.equal(service.nextPageFor(1, 15, 15), 0, "exactly one full page → no next");
+  assert.equal(service.nextPageFor(1, 15, 0), 0, "empty → no next");
+});

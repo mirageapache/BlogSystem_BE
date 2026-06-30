@@ -5,6 +5,21 @@ function isSafeLink(link) {
   return !link || (link.startsWith("/") && !link.startsWith("//")) || /^https?:\/\//.test(link);
 }
 
+/** limit 夾在 1..50，非法/缺省回 15，避免 client 拉爆查詢 */
+function clampLimit(raw) {
+  return Math.min(Math.max(Number(raw) || 15, 1), 50);
+}
+
+/** page 至少為 1，非法/缺省回 1 */
+function clampPage(raw) {
+  return Math.max(Number(raw) || 1, 1);
+}
+
+/** 偏移式分頁：還有後續資料才回下一頁碼，否則回 0（前端以 >0 判斷是否續抓） */
+function nextPageFor(page, limit, total) {
+  return page * limit < total ? page + 1 : 0;
+}
+
 /** 將通知文件轉成前端形狀；sender 只露出公開欄位 */
 function toClientShape(n) {
   return {
@@ -87,6 +102,9 @@ async function createSystemNotification({ recipient, title = "", preview = "", l
 module.exports = {
   toClientShape,
   isSafeLink,
+  clampLimit,
+  clampPage,
+  nextPageFor,
   createNotification,
   removeNotification,
   createSystemNotification,
