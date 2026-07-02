@@ -7,6 +7,7 @@ const {
 } = require("../middleware/fileUtils");
 const { isEmpty } = require("lodash");
 const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
+const notificationService = require("../services/notificationService");
 
 /** 公開可見的貼文狀態：1-發佈(公開) / 2-發佈(限閱)。草稿(0)與下架(3)僅作者本人可見 */
 const PUBLIC_STATUS = [1, 2];
@@ -351,28 +352,54 @@ const postController = {
       if (!isValidId(postId))
         return res.status(404).json({ code: "NOT_FOUND", message: "貼文不存在" });
 
-      // 以 atomic operator 更新，避免並發點讚造成遺失更新
-      const updateResult = await Post.findByIdAndUpdate(
-        postId,
-        action
-          ? { $addToSet: { likedByUsers: userId } }
-          : { $pull: { likedByUsers: userId } },
-        { new: true }
-      )
-      .populate("author", {
-        _id: 1,
-        account: 1,
-        name: 1,
-        avatar: 1,
-        bgColor: 1,
-      })
-      .populate({
-        path: "likedByUsers",
-        select: USER_PUBLIC_FIELDS,
-      });
+      const visible = { status: { $in: PUBLIC_STATUS } }; // 草稿/下架不可被按讚、不觸發通知
+
+      // 條件式 filter 偵測按讚 transition：命中(有回傳)才是狀態真的改變，
+      // 避免重送 action:true 把已讀通知洗回未讀。可見性一併收進 filter。
+      const transitioned = action
+        ? await Post.findOneAndUpdate(
+            { _id: postId, ...visible, likedByUsers: { $ne: userId } },
+            { $addToSet: { likedByUsers: userId } },
+            { new: true }
+          ).select("author content")
+        : await Post.findOneAndUpdate(
+            { _id: postId, ...visible, likedByUsers: userId },
+            { $pull: { likedByUsers: userId } },
+            { new: true }
+          ).select("author");
+
+      // no-op(已讚過/未讚過)時 transitioned 為 null，仍需回傳目前貼文給前端，維持原回傳形狀
+      const updateResult = await Post.findOne({ _id: postId, ...visible })
+        .populate("author", { _id: 1, account: 1, name: 1, avatar: 1, bgColor: 1 })
+        .populate({ path: "likedByUsers", select: USER_PUBLIC_FIELDS });
 
       if (!updateResult)
         return res.status(404).json({ code: "NOT_FOUND", message: "貼文不存在" });
+
+      // 只在真的 transition 時動通知；通知失敗不可讓按讚主流程失敗
+      if (transitioned) {
+        try {
+          if (action) {
+            await notificationService.createNotification({
+              recipient: transitioned.author,
+              sender: userId,
+              type: "like_post",
+              entityType: "post",
+              entityId: postId,
+              preview: (transitioned.content || "").slice(0, 50),
+            });
+          } else {
+            await notificationService.removeNotification({
+              recipient: transitioned.author,
+              sender: userId,
+              type: "like_post",
+              entityId: postId,
+            });
+          }
+        } catch (e) {
+          console.error("[notification] like_post hook failed:", e.message);
+        }
+      }
 
       return res
         .status(200)

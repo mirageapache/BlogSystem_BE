@@ -1,5 +1,7 @@
 const Follow = require("../models/follow");
+const User = require("../models/user");
 const { isValidId, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
+const notificationService = require("../services/notificationService");
 
 const followController = {
   /** 取得追蹤清單(user是追蹤人的情況) */
@@ -106,6 +108,22 @@ const followController = {
 
       await Follow.create({ follower: userId, followed: targetId });
 
+      // 通知被追蹤者；先確認 user 真的存在避免 dangling 通知。通知失敗不可讓追蹤主流程失敗。
+      try {
+        const target = await User.findById(targetId).select("_id").lean();
+        if (target) {
+          await notificationService.createNotification({
+            recipient: targetId,
+            sender: userId,
+            type: "follow",
+            entityType: "user",
+            entityId: userId, // 點擊導向追蹤者本人 profile
+          });
+        }
+      } catch (e) {
+        console.error("[notification] follow hook failed:", e.message);
+      }
+
       return res.status(200).json({ code: "SUCCESS", message: "追蹤成功" });
     } catch (error) {
       if (error.code === 11000) {
@@ -132,6 +150,18 @@ const followController = {
         return res.status(401).json({ code: "UNFOLLOWED", message: "已取消追蹤" });
 
       await Follow.findOneAndDelete({ follower: userId, followed: targetId });
+
+      // 取消追蹤移除對應通知，避免「追蹤→取消→再追蹤」洗版。移除失敗不阻斷主流程。
+      try {
+        await notificationService.removeNotification({
+          recipient: targetId,
+          sender: userId,
+          type: "follow",
+          entityId: userId,
+        });
+      } catch (e) {
+        console.error("[notification] unfollow hook failed:", e.message);
+      }
 
       return res.status(200).json({ code: "SUCCESS", message: "取消追蹤成功" });
     } catch (error) {
