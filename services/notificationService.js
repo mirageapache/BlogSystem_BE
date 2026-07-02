@@ -1,4 +1,22 @@
 const Notification = require("../models/Notification");
+const Pusher = require("pusher");
+
+// Pusher 私有頻道：每位使用者一條 private-user-<id>。secret 只在後端，client 訂閱前先打 pusher-auth 授權。
+const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID,
+  key: process.env.PUSHER_KEY,
+  secret: process.env.PUSHER_SECRET,
+  cluster: process.env.PUSHER_CLUSTER,
+  useTLS: true,
+});
+const userChannel = (uid) => `private-user-${uid}`;
+const CHANNEL_RE = /^private-user-[0-9a-f]{24}$/;
+
+/** pusher-auth 判定：格式合法且必須是自己的頻道，否則即 BOLA。回 'ok' | 'forbidden' | 'invalid'。 */
+function classifyChannelAuth(channelName, userId) {
+  if (typeof channelName !== "string" || !CHANNEL_RE.test(channelName)) return "invalid";
+  return channelName === userChannel(userId) ? "ok" : "forbidden";
+}
 
 /** 系統通知 link 白名單：空值、站內路徑（單一 / 開頭、擋 //protocol-relative）、或 https?:// URL */
 function isSafeLink(link) {
@@ -46,9 +64,31 @@ function toClientShape(n) {
 
 const { USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 
-// ponytail: 推播此階段是 no-op 接縫；階段 4 換成 pusher.triggerBatch（new/removed/unreadCount）。
-async function pushNew() {}
-async function pushRemoved() {}
+const unreadCountFor = (recipient) => Notification.countDocuments({ recipient, isRead: false });
+
+/** 推「新通知 + 最新未讀數」到使用者私有頻道（無狀態 HTTP，serverless 友善）。 */
+async function pushNew(recipient, payload) {
+  const count = await unreadCountFor(recipient);
+  await pusher.triggerBatch([
+    { channel: userChannel(recipient), name: "notification:new", data: payload },
+    { channel: userChannel(recipient), name: "notification:unreadCount", data: { count } },
+  ]);
+}
+
+/** 推「移除某列 + 最新未讀數」（取消讚/取消追蹤、REST 刪除共用）。 */
+async function pushRemoved(recipient, notificationId) {
+  const count = await unreadCountFor(recipient);
+  await pusher.triggerBatch([
+    { channel: userChannel(recipient), name: "notification:removed", data: { notificationId } },
+    { channel: userChannel(recipient), name: "notification:unreadCount", data: { count } },
+  ]);
+}
+
+/** 只推未讀數（REST 標已讀/清除後跨分頁/裝置同步徽章）。 */
+async function pushUnreadCount(recipient) {
+  const count = await unreadCountFor(recipient);
+  await pusher.trigger(userChannel(recipient), "notification:unreadCount", { count });
+}
 
 const DEDUP_TYPES = ["like_post", "like_article", "follow"]; // 同一人對同一目標只留一筆
 
@@ -100,6 +140,8 @@ async function createSystemNotification({ recipient, title = "", preview = "", l
 }
 
 module.exports = {
+  pusher,
+  classifyChannelAuth,
   toClientShape,
   isSafeLink,
   clampLimit,
@@ -108,4 +150,6 @@ module.exports = {
   createNotification,
   removeNotification,
   createSystemNotification,
+  pushRemoved,
+  pushUnreadCount,
 };

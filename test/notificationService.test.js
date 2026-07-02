@@ -95,3 +95,14 @@ test("nextPageFor returns next page only when more rows remain", () => {
   assert.equal(service.nextPageFor(1, 15, 15), 0, "exactly one full page → no next");
   assert.equal(service.nextPageFor(1, 15, 0), 0, "empty → no next");
 });
+
+test("classifyChannelAuth only authorizes a member's own well-formed channel", () => {
+  const me = "65f000000000000000000001";
+  const other = "65f0000000000000000000ff";
+  assert.equal(service.classifyChannelAuth(`private-user-${me}`, me), "ok", "own channel → ok");
+  assert.equal(service.classifyChannelAuth(`private-user-${other}`, me), "forbidden", "someone else's channel → BOLA, forbidden");
+  assert.equal(service.classifyChannelAuth("private-user-not-an-objectid", me), "invalid", "malformed id → invalid");
+  assert.equal(service.classifyChannelAuth("presence-user-" + me, me), "invalid", "wrong channel prefix → invalid");
+  assert.equal(service.classifyChannelAuth(`private-user-${me.toUpperCase()}`, me), "invalid", "uppercase hex isn't a valid ObjectId form → invalid");
+  assert.equal(service.classifyChannelAuth(undefined, me), "invalid", "non-string → invalid");
+});

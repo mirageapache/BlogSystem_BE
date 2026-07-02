@@ -24,4 +24,7 @@ router.delete("/delete", notificationController.deleteNotification);
 /** 清除已讀 */
 router.delete("/clear", notificationController.clearNotifications);
 
+/** Pusher 私有頻道授權（pusher-js 訂閱前呼叫；已套 authorization + requireMember） */
+router.post("/pusher-auth", notificationController.pusherAuth);
+
 module.exports = router;
