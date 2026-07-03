@@ -90,6 +90,24 @@ async function pushUnreadCount(recipient) {
   await pusher.trigger(userChannel(recipient), "notification:unreadCount", { count });
 }
 
+/** 批次刪除的即時同步：先獨立刷新未讀徽章（最重要、必達），再逐列推 notification:removed
+ *  （沿用單筆刪除的事件形狀，前端免改）。
+ *  ponytail: Pusher triggerBatch 單次上限約 10 事件，故每 9 筆切一塊；controller 已把批量壓在 100。
+ *  量再放大就改推單一「整批 refetch」信號取代逐列。 */
+async function pushRemovedMany(recipient, notificationIds) {
+  await pushUnreadCount(recipient); // 徽章獨立推送：即使下面切塊失敗，未讀數仍正確
+  const channel = userChannel(recipient);
+  for (let i = 0; i < notificationIds.length; i += 9) {
+    await pusher.triggerBatch(
+      notificationIds.slice(i, i + 9).map((id) => ({
+        channel,
+        name: "notification:removed",
+        data: { notificationId: String(id) },
+      }))
+    );
+  }
+}
+
 const DEDUP_TYPES = ["like_post", "like_article", "follow"]; // 同一人對同一目標只留一筆
 
 /** 互動通知統一進入點：跳過自己 → 去重/新增 → populate sender → 推播。 */
@@ -167,5 +185,6 @@ module.exports = {
   removeEntityNotifications,
   createSystemNotification,
   pushRemoved,
+  pushRemovedMany,
   pushUnreadCount,
 };

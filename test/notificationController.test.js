@@ -15,6 +15,7 @@ const { pusher } = require("../services/notificationService");
 const ME = "65f000000000000000000001"; // 呼叫者（JWT 推導）
 const OTHER = "65f0000000000000000000ff"; // 另一位使用者
 const NID = "65f0000000000000000000aa"; // 一筆通知 id
+const NID2 = "65f0000000000000000000ab"; // 第二筆通知 id（批次刪除用）
 
 // req 永遠帶 JWT 推導的 userId；body 可被攻擊者塞任意欄位（測試要證明 controller 不信 body）
 function mockReq({ userId = ME, body = {} } = {}) {
@@ -86,30 +87,86 @@ test("markAllRead updates only the caller's unread notifications", async (t) => 
   assert.deepEqual(filter, { recipient: ME, isRead: false });
 });
 
-test("deleteNotification scopes to JWT recipient and 404s on 0 match", async (t) => {
-  const deleteOne = t.mock.method(Notification, "deleteOne", async () => ({ deletedCount: 0 }));
+test("deleteNotification rejects when any id is invalid (400, never touches DB)", async (t) => {
+  const deleteMany = t.mock.method(Notification, "deleteMany", async () => ({ deletedCount: 0 }));
   const res = mockRes();
-  await controller.deleteNotification(mockReq({ body: { notificationId: NID } }), res);
-  assert.equal(res.statusCode, 404);
-  const [filter] = deleteOne.mock.calls[0].arguments;
-  assert.equal(filter._id, NID);
-  assert.equal(filter.recipient, ME, "刪除 filter 必須綁 JWT recipient，擋越權");
+  await controller.deleteNotification(mockReq({ body: { notificationIds: [NID, "not-an-id"] } }), res);
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.payload.code, "INVALID_PARAM");
+  assert.equal(deleteMany.mock.callCount(), 0, "任一 id 非法就整批不打 DB");
 });
 
-test("deleteNotification deletes then pushes removed + unreadCount via triggerBatch", async (t) => {
-  t.mock.method(Notification, "deleteOne", async () => ({ deletedCount: 1 }));
-  t.mock.method(Notification, "countDocuments", async () => 2);
+test("deleteNotification rejects an empty batch with 400", async (t) => {
+  const deleteMany = t.mock.method(Notification, "deleteMany", async () => ({ deletedCount: 0 }));
+  const res = mockRes();
+  await controller.deleteNotification(mockReq({ body: { notificationIds: [] } }), res);
+  assert.equal(res.statusCode, 400);
+  assert.equal(deleteMany.mock.callCount(), 0);
+});
+
+test("deleteNotification rejects an oversized batch with 400 (cap guard)", async (t) => {
+  const deleteMany = t.mock.method(Notification, "deleteMany", async () => ({ deletedCount: 0 }));
+  // 101 個彼此不同的合法 id，超過上限
+  const many = Array.from({ length: 101 }, (_, i) => "65f00000000000000000" + i.toString(16).padStart(4, "0"));
+  const res = mockRes();
+  await controller.deleteNotification(mockReq({ body: { notificationIds: many } }), res);
+  assert.equal(res.statusCode, 400);
+  assert.equal(deleteMany.mock.callCount(), 0, "超過上限不打 DB，擋巨量 $in / 推播放大");
+});
+
+test("deleteNotification batch-scopes deleteMany to the JWT recipient and 404s when nothing matched (BOLA)", async (t) => {
+  const deleteMany = t.mock.method(Notification, "deleteMany", async () => ({ deletedCount: 0 }));
+  const res = mockRes();
+  // 攻擊者在 body 偷塞 recipient，controller 必須無視
+  await controller.deleteNotification(mockReq({ body: { notificationIds: [NID, NID2], recipient: "hacker" } }), res);
+  assert.equal(res.statusCode, 404);
+  const [filter] = deleteMany.mock.calls[0].arguments;
+  assert.deepEqual(filter, { _id: { $in: [NID, NID2] }, recipient: ME }, "只刪自己的，recipient 來自 JWT");
+});
+
+test("deleteNotification batch-deletes the caller's notifications, pushes removed per id + fresh unreadCount", async (t) => {
+  t.mock.method(Notification, "deleteMany", async () => ({ deletedCount: 2 }));
+  t.mock.method(Notification, "countDocuments", async () => 1);
+  const trigger = t.mock.method(pusher, "trigger", async () => ({}));
   const triggerBatch = t.mock.method(pusher, "triggerBatch", async () => ({}));
+  const res = mockRes();
+  await controller.deleteNotification(mockReq({ body: { notificationIds: [NID, NID2] } }), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.deletedCount, 2);
+  // 逐列 removed（沿用單筆刪除的事件形狀，前端免改）
+  const removedIds = triggerBatch.mock.calls
+    .flatMap((c) => c.arguments[0])
+    .filter((e) => e.name === "notification:removed")
+    .map((e) => e.data.notificationId);
+  assert.deepEqual(removedIds.sort(), [NID, NID2].sort(), "每筆刪除各推一次 removed");
+  // 徽章獨立刷新（不與 removed 綁在同一批，才不受 batch 上限影響）
+  assert.equal(trigger.mock.callCount(), 1);
+  const [channel, event, data] = trigger.mock.calls[0].arguments;
+  assert.equal(channel, `private-user-${ME}`);
+  assert.equal(event, "notification:unreadCount");
+  assert.equal(data.count, 1);
+});
+
+test("deleteNotification still accepts a single notificationId (backward compatible)", async (t) => {
+  const deleteMany = t.mock.method(Notification, "deleteMany", async () => ({ deletedCount: 1 }));
+  t.mock.method(Notification, "countDocuments", async () => 0);
+  t.mock.method(pusher, "trigger", async () => ({}));
+  t.mock.method(pusher, "triggerBatch", async () => ({}));
   const res = mockRes();
   await controller.deleteNotification(mockReq({ body: { notificationId: NID } }), res);
   assert.equal(res.statusCode, 200);
-  const [events] = triggerBatch.mock.calls[0].arguments;
-  assert.equal(events.length, 2);
-  assert.equal(events[0].name, "notification:removed");
-  assert.equal(events[0].data.notificationId, NID);
-  assert.equal(events[0].channel, `private-user-${ME}`);
-  assert.equal(events[1].name, "notification:unreadCount");
-  assert.equal(events[1].data.count, 2);
+  const [filter] = deleteMany.mock.calls[0].arguments;
+  assert.deepEqual(filter, { _id: { $in: [NID] }, recipient: ME }, "單筆也正規化成 $in 陣列");
+});
+
+test("deleteNotification still returns 200 when the push throws (DB is source of truth)", async (t) => {
+  t.mock.method(Notification, "deleteMany", async () => ({ deletedCount: 1 }));
+  t.mock.method(Notification, "countDocuments", async () => 0);
+  t.mock.method(pusher, "trigger", async () => { throw new Error("pusher down"); });
+  t.mock.method(console, "error", () => {}); // 吞掉預期的錯誤 log
+  const res = mockRes();
+  await controller.deleteNotification(mockReq({ body: { notificationIds: [NID] } }), res);
+  assert.equal(res.statusCode, 200, "推播失敗不可把已成功的 DB 刪除變 500");
 });
 
 test("clearNotifications deletes only READ notifications for the caller", async (t) => {
