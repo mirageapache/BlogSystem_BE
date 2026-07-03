@@ -116,6 +116,21 @@ async function createNotification({ recipient, sender, type, entityType, entityI
   return notification;
 }
 
+/** 母文(post/article)被刪 → 收回所有指向它的互動通知（like/comment/reply 都以 entityId=母文id 記錄），
+ *  並刷新每位受影響收件者的未讀徽章。回傳刪除筆數；推播非致命(DB 為單一真相)，自行吞掉推播錯誤。 */
+async function removeEntityNotifications(entityType, entityId) {
+  const recipients = await Notification.distinct("recipient", { entityType, entityId });
+  const { deletedCount } = await Notification.deleteMany({ entityType, entityId });
+  for (const recipient of recipients) {
+    try {
+      await pushUnreadCount(recipient);
+    } catch (e) {
+      console.error("[notification] cascade push failed:", e.message);
+    }
+  }
+  return deletedCount;
+}
+
 /** 取消愛心 / 取消追蹤時移除對應通知（兩者共用，type 不同而已）。 */
 async function removeNotification({ recipient, sender, type, entityId }) {
   const removed = await Notification.findOneAndDelete({ recipient, sender, type, entityId });
@@ -149,6 +164,7 @@ module.exports = {
   nextPageFor,
   createNotification,
   removeNotification,
+  removeEntityNotifications,
   createSystemNotification,
   pushRemoved,
   pushUnreadCount,
