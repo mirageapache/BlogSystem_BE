@@ -7,7 +7,7 @@ const {
   clampLimit,
   clampPage,
   nextPageFor,
-  pushRemoved,
+  pushRemovedMany,
   pushUnreadCount,
 } = require("../services/notificationService");
 
@@ -90,19 +90,22 @@ const notificationController = {
     }
   },
 
-  /** 刪除單筆（原子越權 filter，0 命中即 404） */
+  /** 批次刪除（相容單筆）：原子越權 filter，0 命中即 404 */
   deleteNotification: async (req, res) => {
-    const { notificationId } = req.body;
-    if (!isValidId(notificationId))
+    const { notificationId, notificationIds } = req.body;
+    // 相容單筆：notificationId 正規化成陣列；去重避免重複 $in / 重複推播
+    const ids = [...new Set(Array.isArray(notificationIds) ? notificationIds : [notificationId])];
+    // 上限 100：擋巨量 $in 與推播放大（列表單頁上限 50，多選全選仍在此之內）
+    if (!ids.length || ids.length > 100 || !ids.every(isValidId))
       return res.status(400).json({ code: "INVALID_PARAM", message: "參數錯誤" });
     try {
       const recipient = req.user.userId;
-      const result = await Notification.deleteOne({ _id: notificationId, recipient });
-      if (result.deletedCount === 0)
+      const { deletedCount } = await Notification.deleteMany({ _id: { $in: ids }, recipient });
+      if (deletedCount === 0)
         return res.status(404).json({ code: "NOT_FOUND", message: "通知不存在" });
-      // 推 removed + unreadCount 讓其他分頁移除該列並更新徽章
-      try { await pushRemoved(recipient, String(notificationId)); } catch (e) { console.error("[notification] push removed failed:", e.message); }
-      return res.status(200).json({ success: true });
+      // 推 removed + unreadCount 讓其他分頁移除對應列並更新徽章
+      try { await pushRemovedMany(recipient, ids); } catch (e) { console.error("[notification] push removed failed:", e.message); }
+      return res.status(200).json({ success: true, deletedCount });
     } catch (error) {
       return res.status(500).json({ code: "SYSTEM_ERR", message: error.message });
     }

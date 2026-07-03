@@ -1,4 +1,5 @@
 const Post = require("../models/post");
+const Comment = require("../models/comment");
 const moment = require("moment-timezone");
 const {
   cloudinaryUpload,
@@ -323,13 +324,20 @@ const postController = {
   deletePost: async (req, res) => {
     try {
       const postId = req.body.postId;
-      const existing = await Post.findById(postId).select("author").lean();
+      const existing = await Post.findById(postId).select("author comments").lean();
       if (!existing)
         return res.status(404).json({ code: "NOT_FOUND", message: "貼文不存在" });
       if (existing.author.toString() !== req.user.userId)
         return res.status(403).json({ code: "FORBIDDEN", message: "無權限刪除此貼文" });
 
-      await Post.findByIdAndDelete(postId);
+      await Post.findByIdAndDelete(postId); // 主操作先落地(權威)，連帶清理視為 best-effort
+      // 連帶清除掛在此貼文的留言，與所有指向本貼文的通知；清理失敗不可讓已完成的刪除變 500
+      try {
+        await Comment.deleteMany({ _id: { $in: existing.comments || [] } });
+        await notificationService.removeEntityNotifications("post", postId);
+      } catch (e) {
+        console.error("[deletePost] cascade cleanup failed:", e.message);
+      }
       return res
         .status(200)
         .json({ code: "DELETE_SUCCESS", message: "刪除成功" });

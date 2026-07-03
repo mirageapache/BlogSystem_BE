@@ -1,6 +1,7 @@
 const moment = require("moment-timezone");
 const { isEmpty } = require("lodash");
 const Article = require("../models/article");
+const Comment = require("../models/comment");
 const { convertDraftToTiptap, convertTiptapToDraft } = require('../middleware/articleUtils');
 const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 const notificationService = require("../services/notificationService");
@@ -292,13 +293,20 @@ const articleController = {
       if (!isValidId(articleId))
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
 
-      const existing = await Article.findById(articleId).select("author").lean();
+      const existing = await Article.findById(articleId).select("author comments").lean();
       if (!existing)
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
       if (existing.author.toString() !== req.user.userId)
         return res.status(403).json({ code: "FORBIDDEN", message: "無權限刪除此文章" });
 
-      await Article.findByIdAndDelete(articleId);
+      await Article.findByIdAndDelete(articleId); // 主操作先落地(權威)，連帶清理視為 best-effort
+      // 連帶清除掛在此文章的留言，與所有指向本文章的通知；清理失敗不可讓已完成的刪除變 500
+      try {
+        await Comment.deleteMany({ _id: { $in: existing.comments || [] } });
+        await notificationService.removeEntityNotifications("article", articleId);
+      } catch (e) {
+        console.error("[deleteArticle] cascade cleanup failed:", e.message);
+      }
       return res.status(200).json({
         code: "DELETE_SUCCESS",
         message: "文章刪除成功",
