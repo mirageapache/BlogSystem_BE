@@ -47,6 +47,7 @@ app.use(
   })
 );
 app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: false })); // pusher-js 授權請求預設送 form-urlencoded
 app.use(cookieParser());
 
 // 資料庫連線設定

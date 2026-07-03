@@ -9,6 +9,7 @@ const post = require("./modules/post");
 const user = require("./modules/user");
 const utility = require("./modules/utility");
 const ai = require("./modules/ai");
+const notification = require("./modules/notification");
 
 router.use("/api/article", article);
 router.use("/api/comment", comment);
@@ -18,5 +19,6 @@ router.use("/api/post", post);
 router.use("/api/user", user);
 router.use("/api/utility", utility);
 router.use("/api/ai", ai);
+router.use("/api/notification", notification);
 
 module.exports = router;
