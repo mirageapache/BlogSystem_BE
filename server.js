@@ -34,8 +34,6 @@ const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
   : [
       "http://localhost:3001", // 本地開發的URL
-      "http://172.31.4.24:3001", // 本地開發的URL
-      "https://blog-system-fe.vercel.app", // 前端部署的URL
     ];
 
 app.use(
