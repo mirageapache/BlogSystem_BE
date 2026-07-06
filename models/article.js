@@ -23,6 +23,10 @@ const ArticleSchema = new Schema({
   coverImage: {
     type: String,
   },
+  /** 封面圖 Cloudinary public_id（內部用，供更新/刪除定位資產） */
+  coverImageId: {
+    type: String,
+  },
   /** 狀態
    * [0-草稿(已儲存) / 1-發佈(公開) / 2-發佈(限閱) / 3-下架]
    * 註：公開-所有使用者均可閱讀；限閱-進階使用者可完整閱讀，一般使用者僅可閱讀部分內容

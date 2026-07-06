@@ -5,6 +5,8 @@ const Comment = require("../models/comment");
 const { convertDraftToTiptap, convertTiptapToDraft } = require('../middleware/articleUtils');
 const { isValidId, escapeRegExp, parseHashTags, USER_PUBLIC_FIELDS } = require("../middleware/commonUtils");
 const notificationService = require("../services/notificationService");
+// 以命名空間呼叫 cloudinary 函式（非解構），方便測試 stub 這層外部邊界
+const fileUtils = require("../middleware/fileUtils");
 
 /** 公開可見的文章狀態：1-發佈(公開) / 2-發佈(限閱)。草稿(0)與下架(3)僅作者本人可見 */
 const PUBLIC_STATUS = [1, 2];
@@ -214,14 +216,25 @@ const articleController = {
     // 狀態白名單驗證；未提供或非法值時預設為 0(草稿)
     const parsedStatus = parseInt(status);
     const articleStatus = [0, 1, 2, 3].includes(parsedStatus) ? parsedStatus : 0;
+    // 封面圖只認 req.file（multer），永不採信 body 傳入的 coverImage/coverImageId
+    let coverImage = "";
+    let coverImageId = "";
 
     try {
+      if (req.file) {
+        const uploadResult = await fileUtils.cloudinaryUpload(req);
+        coverImage = uploadResult.secure_url;
+        coverImageId = uploadResult.public_id;
+      }
+
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
 
       const newArticle = await Article.create({
         author: req.user.userId,
         title,
         content: articleContent,
+        coverImage,
+        coverImageId,
         status: articleStatus,
         hashTags: hashTagArr,
         createdAt: moment.tz(new Date(), "Asia/Taipei").toDate(),
@@ -244,7 +257,8 @@ const articleController = {
       content,
       status,
       hashTags,
-      clientType
+      clientType,
+      removeImage
     } = req.body;
     const hashTagArr = parseHashTags(hashTags);
     // 僅在前端有傳入合法狀態時才更新，避免編輯既有文章時誤將狀態重設為草稿
@@ -255,17 +269,40 @@ const articleController = {
       if (!isValidId(articleId))
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
 
-      const existing = await Article.findById(articleId).select("author content").lean();
+      const existing = await Article.findById(articleId)
+        .select("author content coverImage coverImageId")
+        .lean();
       if (!existing)
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
       if (existing.author.toString() !== req.user.userId)
         return res.status(403).json({ code: "FORBIDDEN", message: "無權限編輯此文章" });
+
+      // 封面一律以 DB 既有值為基礎，只允許透過 req.file / removeImage 變更，不採信前端傳入的 coverImage/coverImageId
+      let coverImageId = existing.coverImageId;
+      let coverImage = existing.coverImage;
+      if (req.file) {
+        if (isEmpty(coverImageId)) {
+          const uploadResult = await fileUtils.cloudinaryUpload(req);
+          coverImage = uploadResult.secure_url;
+          coverImageId = uploadResult.public_id;
+        } else {
+          const uploadResult = await fileUtils.cloudinaryUpdate(req, coverImageId);
+          coverImage = uploadResult.secure_url;
+        }
+      }
+      if (removeImage === "true") {
+        await fileUtils.cloudinaryRemove(coverImageId);
+        coverImage = "";
+        coverImageId = "";
+      }
 
       const articleContent = clientType === 'vue' ? convertTiptapToDraft(content) : content;
 
       const updateData = {
         title,
         content: articleContent,
+        coverImage,
+        coverImageId,
         hashTags: hashTagArr,
       };
       if (articleStatus !== null) updateData.status = articleStatus;
@@ -293,16 +330,17 @@ const articleController = {
       if (!isValidId(articleId))
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
 
-      const existing = await Article.findById(articleId).select("author comments").lean();
+      const existing = await Article.findById(articleId).select("author comments coverImageId").lean();
       if (!existing)
         return res.status(404).json({ code: "NOT_FOUND", message: "文章不存在" });
       if (existing.author.toString() !== req.user.userId)
         return res.status(403).json({ code: "FORBIDDEN", message: "無權限刪除此文章" });
 
       await Article.findByIdAndDelete(articleId); // 主操作先落地(權威)，連帶清理視為 best-effort
-      // 連帶清除掛在此文章的留言，與所有指向本文章的通知；清理失敗不可讓已完成的刪除變 500
+      // 連帶清除掛在此文章的留言、封面圖(cloudinary)、與所有指向本文章的通知；清理失敗不可讓已完成的刪除變 500
       try {
         await Comment.deleteMany({ _id: { $in: existing.comments || [] } });
+        if (!isEmpty(existing.coverImageId)) await fileUtils.cloudinaryRemove(existing.coverImageId);
         await notificationService.removeEntityNotifications("article", articleId);
       } catch (e) {
         console.error("[deleteArticle] cascade cleanup failed:", e.message);

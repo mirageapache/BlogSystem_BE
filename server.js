@@ -30,13 +30,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 // 允許的來源：優先讀環境變數 CORS_ORIGINS（逗號分隔），未設定則用預設清單
-const corsOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
-  : [
-      "http://localhost:3001", // 本地開發的URL
-      "http://172.31.4.24:3001", // 本地開發的URL
-      "https://blog-system-fe.vercel.app", // 前端部署的URL
-    ];
+const corsOrigins = process.env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
 
 app.use(
   cors({
@@ -62,6 +56,12 @@ db.once("open", () => {
 db.on("error", (err) => {
   logger.error(err);
 });
+
+// API 文件：/api/docs 開互動 UI，/api/openapi.json 供前端 codegen 取原始 spec
+const swaggerUi = require("swagger-ui-express");
+const openapiSpec = require("./docs/openapi");
+app.get("/api/openapi.json", (req, res) => res.json(openapiSpec));
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 // 路由設定
 app.use(routes);
