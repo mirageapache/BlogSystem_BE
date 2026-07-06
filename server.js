@@ -63,6 +63,12 @@ db.on("error", (err) => {
   logger.error(err);
 });
 
+// API 文件：/api/docs 開互動 UI，/api/openapi.json 供前端 codegen 取原始 spec
+const swaggerUi = require("swagger-ui-express");
+const openapiSpec = require("./docs/openapi");
+app.get("/api/openapi.json", (req, res) => res.json(openapiSpec));
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
+
 // 路由設定
 app.use(routes);
 
