@@ -30,11 +30,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 // 允許的來源：優先讀環境變數 CORS_ORIGINS（逗號分隔），未設定則用預設清單
-const corsOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
-  : [
-      "http://localhost:3001", // 本地開發的URL
-    ];
+const corsOrigins = process.env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
 
 app.use(
   cors({
