@@ -83,6 +83,7 @@ module.exports = swaggerJsdoc({
             title: { type: "string" },
             content: { type: "string" },
             coverImage: { type: "string" },
+            coverImageId: { type: "string", description: "Cloudinary public_id（內部用）" },
             status: {
               type: "integer",
               enum: [0, 1, 2, 3],

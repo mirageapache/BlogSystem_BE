@@ -203,7 +203,8 @@ router.post(
  *     security: [{ bearer: [] }]
  *     description: >-
  *       multipart/form-data 上傳；僅作者本人可更新。status 未帶或非法時不更動既有狀態，
- *       僅在內容實際變動時才更新 editedAt。
+ *       僅在內容實際變動時才更新 editedAt。封面圖以 DB 既有值為基礎，
+ *       上傳 imageFile 可替換、removeImage 設為字串 "true" 可移除；不採信前端傳入的 coverImage。
  *     requestBody:
  *       required: true
  *       content:
@@ -217,6 +218,7 @@ router.post(
  *                 type: string
  *                 format: binary
  *                 description: 封面圖檔（jpg/jpeg/png/gif，上限 10MB；multer 欄位名為 imageFile）
+ *               removeImage: { type: string, enum: ['true', 'false'], description: '傳字串 "true" 移除現有封面圖' }
  *               title: { type: string }
  *               content: { type: string }
  *               status:
